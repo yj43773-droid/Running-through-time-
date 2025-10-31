@@ -15,12 +15,10 @@ export const MyPage: React.FC = () => {
   }, [checkAuth]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
+    if (isAuthenticated) {
+      loadOrbs();
     }
-    loadOrbs();
-  }, [isAuthenticated, navigate, loadOrbs]);
+  }, [isAuthenticated, loadOrbs]);
 
   const handleSettingsClick = () => {
     navigate('/settings');
@@ -31,9 +29,9 @@ export const MyPage: React.FC = () => {
     navigate('/login');
   };
 
-  if (!isAuthenticated || !user) {
-    return null;
-  }
+  const handleLoginClick = () => {
+    navigate('/login');
+  };
 
   const emotionLabels: Record<EmotionType, string> = {
     happy: '기쁨',
@@ -71,15 +69,33 @@ export const MyPage: React.FC = () => {
         >
           {/* User Profile */}
           <div className="bg-white rounded-2xl p-6 shadow-md mb-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-2xl font-bold">
-                {user.name[0]}
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-2xl font-bold">
+                  {user.name[0]}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">{user.name}</h3>
+                  <p className="text-sm text-gray-600">{user.email}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-800">{user.name}</h3>
-                <p className="text-sm text-gray-600">{user.email}</p>
+            ) : (
+              <div className="flex flex-col items-center gap-4 mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-2xl font-bold">
+                  ?
+                </div>
+                <div className="text-center">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">로그인이 필요합니다</h3>
+                  <p className="text-sm text-gray-600 mb-4">로그인하여 일기를 작성하고 메모리 구슬을 모아보세요</p>
+                  <button
+                    onClick={handleLoginClick}
+                    className="px-6 py-2 bg-gradient-to-r from-purple-400 to-pink-400 text-white rounded-full font-semibold hover:shadow-lg transition-all"
+                  >
+                    로그인하기
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Stats Section */}
@@ -128,22 +144,24 @@ export const MyPage: React.FC = () => {
           </div>
 
           {/* Actions */}
-          <div className="space-y-3">
-            <button
-              onClick={handleSettingsClick}
-              className="w-full py-4 bg-white rounded-xl shadow-md text-left px-6 flex items-center justify-between active:bg-gray-50"
-            >
-              <span className="font-semibold text-gray-800">⚙️ 설정</span>
-              <span className="text-gray-400">→</span>
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full py-4 bg-white rounded-xl shadow-md text-left px-6 flex items-center justify-between active:bg-gray-50"
-            >
-              <span className="font-semibold text-red-500">🚪 로그아웃</span>
-              <span className="text-gray-400">→</span>
-            </button>
-          </div>
+          {isAuthenticated && (
+            <div className="space-y-3">
+              <button
+                onClick={handleSettingsClick}
+                className="w-full py-4 bg-white rounded-xl shadow-md text-left px-6 flex items-center justify-between active:bg-gray-50"
+              >
+                <span className="font-semibold text-gray-800">⚙️ 설정</span>
+                <span className="text-gray-400">→</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full py-4 bg-white rounded-xl shadow-md text-left px-6 flex items-center justify-between active:bg-gray-50"
+              >
+                <span className="font-semibold text-red-500">🚪 로그아웃</span>
+                <span className="text-gray-400">→</span>
+              </button>
+            </div>
+          )}
         </motion.div>
       </main>
 
