@@ -16,6 +16,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
     "@google/generative-ai": "^0.24.1",
     "@langchain/core": "^1.0.2",
     "@langchain/google-genai": "^1.0.0",
