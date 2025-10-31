@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "seed": "ts-node src/seed.ts",
     "reset-db": "rm -f database.db && npm run seed",
+    "migrate:embeddings": "ts-node src/scripts/migrate-embeddings.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

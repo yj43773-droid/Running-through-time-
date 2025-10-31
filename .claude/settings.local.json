@@ -1,21 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)",
-      "Bash(powershell -Command \"Stop-Process -Id 30160 -Force\")",
-      "Bash(npm run dev:*)",
-      "Bash(dir \"C:\\Users\\yj437\\OneDrive\\Desktop\\coding\\project\\backend_express\\src\")",
-      "Bash(timeout 10 npm run dev:*)",
-      "Bash(timeout 15 npm run dev:*)",
-      "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nImplement local embedded vector store for diary similarity search\n\n- Replace Chroma server with local in-memory vector store\n- Add keyword-based similarity search for diary retrieval\n- Create vector_data directory for local storage\n- Graceful fallback to text-matching when API key unavailable\n- No external server dependencies required (SQLite-like local approach)\n- Support for RAG (Retrieval-Augmented Generation) context in AI responses\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(timeout 20 npm run dev:*)",
-      "Bash(npm install:*)",
-      "Bash(dir:*)",
-      "Bash(git commit:*)",
-      "Bash(node -e:*)",
-      "Bash(timeout 60 node:*)",
-      "Bash(node test-vector.js:*)"
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []
