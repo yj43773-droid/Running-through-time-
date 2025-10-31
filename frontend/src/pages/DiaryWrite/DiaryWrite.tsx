@@ -90,30 +90,36 @@ export const DiaryWrite: React.FC = () => {
   };
 
   return (
-    <div className="mobile-container pb-20 min-h-screen">
+    <div className="mobile-container pb-20 min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="safe-area-top bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-10">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-gray-600 text-lg"
-        >
-          ←
-        </button>
-        <h1 className="text-lg font-semibold">일기 쓰기</h1>
-        <button
-          onClick={handleComplete}
-          disabled={isSubmitting || !currentContent.trim()}
-          className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? '저장 중...' : '완료'}
-        </button>
+      <header className="safe-area-top bg-white border-b border-gray-200 px-4 pt-8 pb-2 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div className="flex items-center justify-center">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-gray-600 text-lg hover:text-purple-500 transition-colors flex items-center justify-center"
+          >
+            ←
+          </button>
+        </div>
+        <div className="flex items-center justify-center flex-1">
+          <h1 className="text-lg font-semibold text-gray-800">일기 쓰기</h1>
+        </div>
+        <div className="flex items-center justify-center">
+          <button
+            onClick={handleComplete}
+            disabled={isSubmitting || !currentContent.trim()}
+            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed hover:shadow-lg transition-all"
+          >
+            {isSubmitting ? '저장 중...' : '완료'}
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="p-4">
         {/* Emotion Selector */}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+        <div className="mb-4 bg-white rounded-2xl p-6 shadow-md">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
             오늘의 감정
           </label>
           <div className="flex flex-wrap gap-2">
@@ -121,10 +127,10 @@ export const DiaryWrite: React.FC = () => {
               <button
                 key={emotion.value}
                 onClick={() => setSelectedEmotion(emotion.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all shadow-md ${
                   selectedEmotion === emotion.value
-                    ? 'ring-2 ring-purple-500 ring-offset-2'
-                    : 'bg-gray-100'
+                    ? 'ring-2 ring-purple-500 ring-offset-2 scale-105'
+                    : 'bg-gray-100 hover:bg-gray-200'
                 }`}
                 style={{
                   backgroundColor:
@@ -139,14 +145,14 @@ export const DiaryWrite: React.FC = () => {
         </div>
 
         {/* Font Selector */}
-        <div className="mb-4">
+        <div className="mb-4 bg-white rounded-2xl p-6 shadow-md">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             폰트
           </label>
           <select
             value={currentFont}
             onChange={(e) => setCurrentFont(e.target.value)}
-            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500"
+            className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
           >
             {fonts.map((font) => (
               <option key={font.value} value={font.value}>
@@ -157,18 +163,18 @@ export const DiaryWrite: React.FC = () => {
         </div>
 
         {/* Text Editor */}
-        <div className="mb-4">
+        <div className="mb-4 bg-white rounded-2xl p-6 shadow-md">
           <textarea
             value={currentContent}
             onChange={(e) => updateContent(e.target.value)}
             placeholder="오늘 하루는 어땠나요?"
-            className="w-full min-h-[400px] p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:border-purple-500"
+            className="w-full min-h-[400px] p-4 border-2 border-gray-300 rounded-lg resize-none focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
             style={{ fontFamily: currentFont || 'inherit' }}
           />
         </div>
 
         {/* Photo Upload */}
-        <div className="mb-4">
+        <div className="mb-4 bg-white rounded-2xl p-6 shadow-md">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             사진
           </label>
@@ -182,7 +188,7 @@ export const DiaryWrite: React.FC = () => {
           />
           <label
             htmlFor="photo-upload"
-            className="block w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-purple-500"
+            className="block w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all"
           >
             📷 사진 추가
           </label>
@@ -195,11 +201,11 @@ export const DiaryWrite: React.FC = () => {
                   <img
                     src={photo}
                     alt={`Upload ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-lg"
+                    className="w-full h-24 object-cover rounded-lg shadow-sm"
                   />
                   <button
                     onClick={() => removePhoto(photo)}
-                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                    className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                   >
                     ×
                   </button>
@@ -212,7 +218,7 @@ export const DiaryWrite: React.FC = () => {
         {/* STT Button */}
         <button
           onClick={handleSTT}
-          className="w-full py-3 bg-blue-500 text-white rounded-lg font-semibold active:bg-blue-600"
+          className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-semibold hover:shadow-lg active:opacity-90 transition-all"
         >
           🎤 음성으로 입력하기
         </button>

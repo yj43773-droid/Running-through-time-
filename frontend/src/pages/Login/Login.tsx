@@ -32,7 +32,7 @@ export const Login: React.FC = () => {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8">
         {/* App Logo/Title */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-purple-600 mb-2">마음구슬일기</h1>
+          <h1 className="text-4xl font-bold text-purple-600 mb-2">마음 구슬 다이어리</h1>
           <p className="text-gray-600">당신의 마음을 기록하세요</p>
         </div>
 
