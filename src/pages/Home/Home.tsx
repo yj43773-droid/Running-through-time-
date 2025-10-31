@@ -14,9 +14,10 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Always try to load orbs (will be empty if not authenticated)
-    loadOrbs();
-  }, [loadOrbs]);
+    if (user) {
+      loadOrbs();
+    }
+  }, [user, loadOrbs]);
 
   const handleOrbClick = (orb: MemoryOrb) => {
     navigate(`/calendar/detail/${orb.diaryId}`);

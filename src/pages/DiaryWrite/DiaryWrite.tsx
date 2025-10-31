@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDiary } from '@/hooks/useDiary';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
+import { EmotionType } from '@/types';
 
 export const DiaryWrite: React.FC = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export const DiaryWrite: React.FC = () => {
   } = useDiary();
   const { addOrb } = useMemoryOrbs();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedEmotion, setSelectedEmotion] = useState<string>('happy');
+  const [selectedEmotion, setSelectedEmotion] = useState<EmotionType>('happy');
 
   const fonts = [
     { value: 'default', label: '기본' },
@@ -27,7 +28,7 @@ export const DiaryWrite: React.FC = () => {
     { value: 'cursive', label: '손글씨' },
   ];
 
-  const emotions = [
+  const emotions: { value: EmotionType; label: string; color: string }[] = [
     { value: 'happy', label: '기쁨', color: '#FFD93D' },
     { value: 'sad', label: '슬픔', color: '#6BCAE2' },
     { value: 'angry', label: '화남', color: '#FF6B6B' },
@@ -70,10 +71,11 @@ export const DiaryWrite: React.FC = () => {
         content: currentContent,
         photos: currentPhotos,
         font: currentFont,
+        emotion: selectedEmotion,
       });
 
       if (diary) {
-        await addOrb(diary.id, selectedEmotion as any, new Date().toISOString());
+        await addOrb(diary.id, selectedEmotion, new Date().toISOString());
         resetDiary();
         navigate(`/diary/complete/${diary.id}`);
       }
@@ -215,4 +217,3 @@ export const DiaryWrite: React.FC = () => {
     </div>
   );
 };
-

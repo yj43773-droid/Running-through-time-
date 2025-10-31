@@ -1,5 +1,33 @@
 import { useState, useCallback, useMemo } from 'react';
-import { MemoryOrb, EmotionType, CalendarEntry } from '@/types';
+import { MemoryOrb, EmotionType, CalendarEntry, ReinterpretationReply } from '@/types';
+import { apiFetch, ApiError } from '@/lib/apiClient';
+
+interface MemoryOrbApiResponse {
+  id: string;
+  diaryId: string;
+  userId: string;
+  emotion: string;
+  date: string;
+  isReinterpreted?: boolean;
+  reinterpretationNote?: string | null;
+  reinterpretationReplies?: ReinterpretationReply[] | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const normalizeOrb = (payload: MemoryOrbApiResponse): MemoryOrb => {
+  const emotion = (payload.emotion ?? 'happy') as EmotionType;
+  return {
+    id: payload.id,
+    diaryId: payload.diaryId,
+    date: payload.date,
+    emotion,
+    isReinterpreted: Boolean(payload.isReinterpreted),
+    reinterpretationNote: payload.reinterpretationNote ?? undefined,
+    reinterpretationReplies: payload.reinterpretationReplies ?? undefined,
+    glitterEffect: false,
+  };
+};
 
 export const useMemoryOrbs = () => {
   const [orbs, setOrbs] = useState<MemoryOrb[]>([]);
@@ -10,55 +38,17 @@ export const useMemoryOrbs = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/memory-orbs');
-      // const data = await response.json();
-      // setOrbs(data);
-      
-      // Mock data - 5 memory orbs for development
-      const mockOrbs: MemoryOrb[] = [
-        {
-          id: '1',
-          diaryId: 'diary-1',
-          date: new Date().toISOString(),
-          emotion: 'happy',
-          isReinterpreted: false,
-        },
-        {
-          id: '2',
-          diaryId: 'diary-2',
-          date: new Date(Date.now() - 86400000).toISOString(), // yesterday
-          emotion: 'calm',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        {
-          id: '3',
-          diaryId: 'diary-3',
-          date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          emotion: 'excited',
-          isReinterpreted: false,
-        },
-        {
-          id: '4',
-          diaryId: 'diary-4',
-          date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-          emotion: 'grateful',
-          isReinterpreted: false,
-        },
-        {
-          id: '5',
-          diaryId: 'diary-5',
-          date: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
-          emotion: 'sad',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-      ];
-      
-      setOrbs(mockOrbs);
+      const response = await apiFetch<{ items: MemoryOrbApiResponse[] }>('/orbs');
+      const mapped = response.items.map(normalizeOrb);
+      setOrbs(mapped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load memory orbs');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬을 불러오지 못했습니다.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -68,39 +58,56 @@ export const useMemoryOrbs = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      const newOrb: MemoryOrb = {
-        id: Date.now().toString(),
-        diaryId,
-        date,
-        emotion,
-        isReinterpreted: false,
-      };
-      
+      const response = await apiFetch<MemoryOrbApiResponse>('/orbs', {
+        method: 'POST',
+        body: { diaryId, emotion, date },
+      });
+      const newOrb = normalizeOrb(response);
       setOrbs(prev => [...prev, newOrb]);
       return newOrb;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add memory orb');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬 생성에 실패했습니다.';
+      setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const markAsReinterpreted = useCallback(async (orbId: string) => {
+  const markAsReinterpreted = useCallback(async (orbId: string, reinterpretationNote?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
+      const response = await apiFetch<MemoryOrbApiResponse>(`/orbs/${orbId}/reinterpret`, {
+        method: 'POST',
+        body: reinterpretationNote ? { reinterpretationNote } : {},
+      });
+      const updatedOrb = normalizeOrb(response);
       setOrbs(prev =>
         prev.map(orb =>
           orb.id === orbId
-            ? { ...orb, isReinterpreted: true, glitterEffect: true }
+            ? {
+                ...orb,
+                ...updatedOrb,
+                glitterEffect: true,
+              }
             : orb
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update memory orb');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬 업데이트에 실패했습니다.';
+      setError(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -165,4 +172,3 @@ export const useMemoryOrbs = () => {
     orbStats,
   };
 };
-
