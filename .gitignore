@@ -1,0 +1,24 @@
+/.venv/
+venv/
+
+*.py[cod]
+__pycache__/
+*.egg-info/
+build/
+dist/
+
+.env
+.env.*
+
+# SQLite / instance artifacts
+/instance/
+*.sqlite3
+*.db
+
+# Chroma persistence
+/vector_store/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
