@@ -83,10 +83,19 @@ export interface ReinterpretationReply {
   timestamp: string;
 }
 
+export interface ContextDiary {
+  id: string;
+  text: string;
+  emotion: string;
+  createdAt: string;
+  similarity: number;
+}
+
 export interface ReinterpretationPrompt {
   characterId: string;
   characterName: string;
   prompt: string;
+  contextDiary?: ContextDiary | null;
 }
 
 // Calendar entry types

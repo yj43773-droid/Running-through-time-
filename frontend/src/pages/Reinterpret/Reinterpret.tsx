@@ -83,15 +83,46 @@ export const Reinterpret: React.FC = () => {
 
   return (
     <div className="mobile-container min-h-screen bg-gradient-to-b from-purple-100 to-pink-100 p-6">
-      {/* Diary Paper */}
+      {/* Diaries Container - Show current and similar past diary side-by-side */}
       <AnimatePresence>
         {showPaper && (
           <motion.div
             initial={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5, rotate: 180 }}
             transition={{ duration: 0.5 }}
+            className="space-y-6"
           >
-            <DiaryPaper diary={diary} />
+            {/* Current Diary */}
+            <div>
+              <h2 className="text-sm font-semibold text-gray-600 mb-2">오늘의 일기</h2>
+              <DiaryPaper diary={diary} />
+            </div>
+
+            {/* Similar Past Diary - if available */}
+            {prompt?.contextDiary && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <h2 className="text-sm font-semibold text-gray-600 mb-2">
+                  비슷한 감정의 예전 일기
+                  {prompt.contextDiary.similarity && (
+                    <span className="text-xs font-normal text-gray-400 ml-2">
+                      (유사도: {(prompt.contextDiary.similarity * 100).toFixed(1)}%)
+                    </span>
+                  )}
+                </h2>
+                <div className="bg-white/80 rounded-lg p-4 border border-purple-200 shadow-md">
+                  <div className="text-xs text-gray-500 mb-2">
+                    {new Date(prompt.contextDiary.createdAt).toLocaleDateString('ko-KR')} • 감정: {prompt.contextDiary.emotion}
+                  </div>
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {prompt.contextDiary.text}
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -101,7 +132,7 @@ export const Reinterpret: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="mt-6"
         >
           <Character
@@ -118,7 +149,7 @@ export const Reinterpret: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
           className="mt-6"
         >
           <ReplyInput onSubmit={handleReplySubmit} disabled={isSubmitting} />

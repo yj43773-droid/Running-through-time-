@@ -93,6 +93,7 @@ export const useCharacters = () => {
         characterId,
         characterName: character.name,
         prompt,
+        contextDiary, // Include the actual context diary data
       };
 
       return reinterpretationPrompt;
