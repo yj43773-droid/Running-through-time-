@@ -57,8 +57,8 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       ''
     );
 
-    // Generate AI responses
-    const responses = aiService.generateMockResponses(diary);
+    // Generate AI responses with RAG
+    const responses = await aiService.generateResponses(diary, userId);
 
     // Update diary with AI responses
     const emotionColor = aiService.emotionToColor(diary.emotion);
@@ -165,8 +165,8 @@ router.post('/:diaryId/refresh-ai', authenticate, async (req: Request, res: Resp
       return res.status(404).json({ error: 'Diary not found' });
     }
 
-    // Generate AI responses
-    const responses = aiService.generateMockResponses(diary);
+    // Generate AI responses with RAG
+    const responses = await aiService.generateResponses(diary, diary.userId);
 
     await diaryService.updateDiary(diary.id, {
       aiPersonaResponses: responses as any,
