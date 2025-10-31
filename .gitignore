@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 dist/
@@ -14,10 +15,15 @@ build/
 *.sqlite3
 
 # Logs
+=======
+# Logs
+logs
+>>>>>>> 81c285891fe6a46e9d30aba6ead78f96b3880e3e
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+<<<<<<< HEAD
 
 # OS
 .DS_Store
@@ -43,3 +49,24 @@ env/
 # misc
 .eslintcache
 .stylelintcache
+=======
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+>>>>>>> 81c285891fe6a46e9d30aba6ead78f96b3880e3e

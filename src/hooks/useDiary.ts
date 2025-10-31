@@ -83,7 +83,26 @@ export const useDiary = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await apiFetch<DiaryApiResponse>(`/diaries/${diaryId}`);
+      let response: DiaryApiResponse;
+      
+      // Try API first, fallback to localStorage
+      try {
+        response = await apiFetch<DiaryApiResponse>(`/diaries/${diaryId}`, {
+          auth: false, // Allow loading without auth
+        });
+      } catch (apiError) {
+        // API failed, try localStorage
+        console.warn('API load failed, trying localStorage:', apiError);
+        const storedDiaries = JSON.parse(localStorage.getItem('diaries') || '[]');
+        const foundDiary = storedDiaries.find((d: DiaryApiResponse) => d.id === diaryId);
+        
+        if (!foundDiary) {
+          throw new Error('일기를 찾을 수 없습니다.');
+        }
+        
+        response = foundDiary;
+      }
+      
       const nextDiary = normalizeDiary(response);
       setDiary(nextDiary);
       setCurrentContent(nextDiary.content);
@@ -139,16 +158,57 @@ export const useDiary = () => {
         let response: DiaryApiResponse;
         const targetId = params.id ?? diary?.id;
 
-        if (targetId) {
-          response = await apiFetch<DiaryApiResponse>(`/diaries/${targetId}`, {
-            method: 'PATCH',
-            body: baseBody,
-          });
-        } else {
-          response = await apiFetch<DiaryApiResponse>('/diaries', {
-            method: 'POST',
-            body: baseBody,
-          });
+        // Try API first, fallback to localStorage
+        try {
+          if (targetId) {
+            response = await apiFetch<DiaryApiResponse>(`/diaries/${targetId}`, {
+              method: 'PATCH',
+              body: baseBody,
+              auth: false, // Allow saving without auth
+            });
+          } else {
+            response = await apiFetch<DiaryApiResponse>('/diaries', {
+              method: 'POST',
+              body: baseBody,
+              auth: false, // Allow saving without auth
+            });
+          }
+        } catch (apiError) {
+          // API failed, save to localStorage instead
+          console.warn('API save failed, using localStorage:', apiError);
+          
+          const newId = targetId || `diary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const now = new Date().toISOString();
+          
+          response = {
+            id: newId,
+            userId: 'local_user',
+            content: baseBody.content,
+            emotion: baseBody.emotion,
+            photos: baseBody.photos,
+            font: baseBody.font,
+            createdAt: diary?.createdAt || now,
+            updatedAt: now,
+            date: now,
+            aiCharacter: baseBody.aiCharacter,
+            aiResponse: baseBody.aiResponse,
+            reinterpretation: baseBody.reinterpretation,
+            isEvolved: baseBody.isEvolved,
+            evolvedEmotion: baseBody.evolvedEmotion,
+            linkedPastDiaryId: baseBody.linkedPastDiaryId,
+          };
+
+          // Save to localStorage
+          const storedDiaries = JSON.parse(localStorage.getItem('diaries') || '[]');
+          const existingIndex = storedDiaries.findIndex((d: DiaryApiResponse) => d.id === newId);
+          
+          if (existingIndex >= 0) {
+            storedDiaries[existingIndex] = response;
+          } else {
+            storedDiaries.push(response);
+          }
+          
+          localStorage.setItem('diaries', JSON.stringify(storedDiaries));
         }
 
         const nextDiary = normalizeDiary(response, payloadOverrides);
@@ -178,11 +238,11 @@ export const useDiary = () => {
   }, []);
 
   const addPhoto = useCallback((photoUrl: string) => {
-    setCurrentPhotos(prev => [...prev, photoUrl]);
+    setCurrentPhotos((prev: string[]) => [...prev, photoUrl]);
   }, []);
 
   const removePhoto = useCallback((photoUrl: string) => {
-    setCurrentPhotos(prev => prev.filter(p => p !== photoUrl));
+    setCurrentPhotos((prev: string[]) => prev.filter((p: string) => p !== photoUrl));
   }, []);
 
   const resetDiary = useCallback(() => {
@@ -192,29 +252,6 @@ export const useDiary = () => {
     setCurrentFont('default');
     setError(null);
   }, []);
-
-  const deleteDiary = useCallback(async (diaryId: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await apiFetch(`/diaries/${diaryId}`, {
-        method: 'DELETE',
-      });
-      resetDiary();
-      return true;
-    } catch (err) {
-      const message =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : '일기 삭제에 실패했습니다.';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [resetDiary]);
 
   return {
     diary,
@@ -230,6 +267,5 @@ export const useDiary = () => {
     addPhoto,
     removePhoto,
     resetDiary,
-    deleteDiary,
   };
 };
