@@ -14,10 +14,20 @@
    pip install -r requirements.txt
    ```
 
-3. **Seed environment variables (optional)**
+3. **Configure environment variables**
 
    ```bash
    cp .env.example .env
+   ```
+
+   Update `.env` with values that suit your environment:
+
+   ```dotenv
+   FLASK_ENV=development
+   SECRET_KEY=dev-secret-key
+   JWT_SECRET_KEY=dev-jwt-secret
+   DATABASE_URI=sqlite:///instance/app.db
+   CORS_ORIGINS=http://localhost:5173
    ```
 
 4. **Optional: install dev dependencies**
@@ -29,7 +39,7 @@
 5. **Run the dev server**
 
    ```bash
-   flask --app wsgi run
+   flask --app app run --debug
    ```
 
 ### Highlights
@@ -37,7 +47,7 @@
 - Flask app factory lives in `app/__init__.py`.
 - SQLite database managed through SQLAlchemy; default file path is `instance/app.db`.
 - User & diary models implement the foreign-key behaviour described in the schema design (`app/models.py`).
-- CRUD + evolution endpoints live under `/api` inside `app/routes.py`.
+- Auth, diary, and memory-orb endpoints live under `/api` inside `app/routes.py`.
 - RAG pipeline keeps Chroma vector indexes in sync and enriches diaries with AI persona replies & similar-entry search (`app/services/diaries.py`, `app/services/ai.py`).
 
 ### Run tests
@@ -54,5 +64,16 @@ pytest
 
 API additions:
 
+- `POST /api/auth/register` — create a user account and receive access/refresh tokens.
+- `POST /api/auth/login` — authenticate and receive fresh tokens.
+- `GET /api/auth/me` — fetch the currently authenticated user profile.
+- `POST /api/auth/refresh` — exchange a refresh token for a new access token.
+- `GET /api/diaries` — list diaries for the authenticated user (supports limit/offset filters).
 - `POST /api/diaries` — stores diary, triggers persona replies & similar diary lookup automatically.
+- `GET /api/diaries/<diary_id>` — fetch a single diary.
+- `PUT/PATCH /api/diaries/<diary_id>` — update diary contents or evolution fields.
+- `DELETE /api/diaries/<diary_id>` — remove a diary entry.
 - `POST /api/diaries/<diary_id>/refresh-ai` — re-run persona generation and similarity search on demand.
+- `GET /api/orbs` — list memory orbs for the authenticated user.
+- `POST /api/orbs` — create a memory orb associated with a diary.
+- `POST /api/orbs/<orb_id>/reinterpret` — mark an orb as reinterpreted and optionally store notes/responses.
