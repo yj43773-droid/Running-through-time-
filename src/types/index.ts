@@ -39,6 +39,7 @@ export interface MemoryOrb {
   emotion: EmotionType;
   isReinterpreted: boolean;
   glitterEffect?: boolean;
+  reinterpretationNote?: string;
   reinterpretationReplies?: ReinterpretationReply[];
 }
 
@@ -52,6 +53,17 @@ export interface Diary {
   font?: string;
   createdAt: string;
   updatedAt: string;
+  emotion?: EmotionType;
+  aiCharacter?: string;
+  aiResponse?: string;
+  isEvolved?: boolean;
+  reinterpretation?: string | null;
+  evolvedEmotion?: string | null;
+  emotionColor?: string | null;
+  evolvedEmotionColor?: string | null;
+  linkedPastDiaryId?: string | null;
+  aiPersonaResponses?: unknown;
+  similarDiaries?: unknown;
 }
 
 // Character types
@@ -83,4 +95,3 @@ export interface CalendarEntry {
   date: string;
   orbs: MemoryOrb[];
 }
-

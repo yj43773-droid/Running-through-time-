@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Character, ReinterpretationPrompt, ReinterpretationReply } from '@/types';
+import pinkImage from '@/assets/pink.png';
+import yellowImage from '@/assets/yellow.png';
+import blueImage from '@/assets/blue.png';
 
 export const useCharacters = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -19,24 +22,24 @@ export const useCharacters = () => {
       const mockCharacters: Character[] = [
         {
           id: 'char1',
-          name: '위로',
-          avatar: '/assets/characters/comfort.svg',
-          personality: '따뜻하고 위로하는',
-          color: '#FFD93D',
+          name: '루미',
+          avatar: pinkImage,
+          personality: '다정하고 공감력 높은 위로자',
+          color: '#FF69B4', // Pink 색상
         },
         {
           id: 'char2',
-          name: '공감',
-          avatar: '/assets/characters/empathy.svg',
-          personality: '깊이 공감하는',
-          color: '#6BCAE2',
+          name: '모카',
+          avatar: yellowImage,
+          personality: '웃음으로 기분을 바꿔주는 분위기 메이커',
+          color: '#FFD700', // Yellow 색상
         },
         {
           id: 'char3',
-          name: '격려',
-          avatar: '/assets/characters/encourage.svg',
-          personality: '용기를 주는',
-          color: '#95E1D3',
+          name: '제트',
+          avatar: blueImage,
+          personality: '현실을 직시하게 도와주는 조언자',
+          color: '#4169E1', // Blue 색상
         },
       ];
       setCharacters(mockCharacters);
@@ -83,7 +86,7 @@ export const useCharacters = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [characters, getCharacterById]);
+  }, [getCharacterById]);
 
   const submitReinterpretationReply = useCallback(async (
     diaryId: string,
@@ -132,4 +135,3 @@ export const useCharacters = () => {
     submitReinterpretationReply,
   };
 };
-

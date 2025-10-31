@@ -14,12 +14,10 @@ export const DiaryWrite: React.FC = () => {
     setCurrentFont,
     addPhoto,
     removePhoto,
-    saveDiary,
     resetDiary,
   } = useDiary();
-  const { addOrb } = useMemoryOrbs();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedEmotion, setSelectedEmotion] = useState<string>('happy');
+  const [selectedEmotion, setSelectedEmotion] = useState<EmotionType>('happy');
 
   const fonts = [
     { value: 'default', label: '기본' },
@@ -28,22 +26,16 @@ export const DiaryWrite: React.FC = () => {
     { value: 'cursive', label: '손글씨' },
   ];
 
-  const emotionLabels: Record<EmotionType, string> = {
-    happy: '기쁨',
-    sad: '슬픔',
-    angry: '화남',
-    anxious: '불안',
-    calm: '평온',
-    excited: '설렘',
-    grateful: '감사',
-    lonely: '외로움',
-  };
-
-  const emotions = (Object.keys(EMOTION_COLORS) as EmotionType[]).map((emotion) => ({
-    value: emotion,
-    label: emotionLabels[emotion],
-    color: EMOTION_COLORS[emotion],
-  }));
+  const emotions: { value: EmotionType; label: string; color: string }[] = [
+    { value: 'happy', label: '기쁨', color: '#FFD93D' },
+    { value: 'sad', label: '슬픔', color: '#6BCAE2' },
+    { value: 'angry', label: '화남', color: '#FF6B6B' },
+    { value: 'anxious', label: '불안', color: '#A8DADC' },
+    { value: 'calm', label: '평온', color: '#95E1D3' },
+    { value: 'excited', label: '설렘', color: '#FF9F66' },
+    { value: 'grateful', label: '감사', color: '#FFD3A5' },
+    { value: 'lonely', label: '외로움', color: '#B19CD9' },
+  ];
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -73,17 +65,28 @@ export const DiaryWrite: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const diary = await saveDiary({
+      // 임시로 일기 ID 생성 (저장 없이 바로 complete 페이지로 이동)
+      const tempDiaryId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 로컬 스토리지에 임시로 저장 (complete 페이지에서 불러오기 위해)
+      const tempDiary = {
+        id: tempDiaryId,
+        userId: 'local_user',
         content: currentContent,
         photos: currentPhotos,
         font: currentFont,
-      });
-
-      if (diary) {
-        await addOrb(diary.id, selectedEmotion as any, new Date().toISOString());
-        resetDiary();
-        navigate(`/diary/complete/${diary.id}`);
-      }
+        emotion: selectedEmotion,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        date: new Date().toISOString(),
+      };
+      
+      const storedDiaries = JSON.parse(localStorage.getItem('diaries') || '[]');
+      storedDiaries.push(tempDiary);
+      localStorage.setItem('diaries', JSON.stringify(storedDiaries));
+      
+      resetDiary();
+      navigate(`/diary/complete/${tempDiaryId}`);
     } catch (error) {
       alert('일기 저장에 실패했습니다.');
     } finally {
@@ -222,4 +225,3 @@ export const DiaryWrite: React.FC = () => {
     </div>
   );
 };
-

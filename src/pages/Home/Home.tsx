@@ -6,8 +6,7 @@ import { NavButtons } from '@/components/NavButtons';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { useAuth } from '@/contexts/AuthContext';
 import { MemoryOrb } from '@/types';
-// 캡슐 머신 이미지 import (이미지 파일을 assets 폴더에 넣으면 됩니다)
-// import capsuleMachineImage from '@/assets/capsule-machine.png';
+import capsuleMachineImage from '@/assets/capsule-machine.png';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -15,41 +14,35 @@ export const Home: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    // Always try to load orbs (will be empty if not authenticated)
-    loadOrbs();
-  }, [loadOrbs]);
+    if (user) {
+      loadOrbs();
+    }
+  }, [user, loadOrbs]);
 
   const handleOrbClick = (orb: MemoryOrb) => {
     navigate(`/calendar/detail/${orb.diaryId}`);
   };
 
   return (
-    <div className="mobile-container pb-20">
-      {/* Header */}
-      <header className="safe-area-top bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-b-3xl shadow-lg">
-        <h2 className="text-2xl font-bold mb-1">
-          안녕하세요, {user?.name || '게스트'}님
-        </h2>
-        <p className="text-purple-100">오늘도 소중한 하루 보내세요</p>
-      </header>
-
+    <div className="w-full max-w-md mx-auto min-h-screen bg-gray-50 pb-24">
       {/* Main Content */}
-      <main className="p-6">
+      <main className="w-full p-4 pt-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           {/* Capsule Machine */}
-          <CapsuleMachine 
-            orbs={orbs} 
-            onOrbClick={handleOrbClick}
-            machineImage={undefined} // 이미지 추가 후: import한 이미지 변수 사용
-            // 예: machineImage={capsuleMachineImage}
-          />
+          <div className="mb-4">
+            <CapsuleMachine 
+              orbs={orbs} 
+              onOrbClick={handleOrbClick}
+              machineImage={capsuleMachineImage}
+            />
+          </div>
 
           {/* Stats Section */}
-          <div className="mt-8 bg-white rounded-2xl p-6 shadow-md">
+          <div className="mt-6 bg-white rounded-2xl p-6 shadow-md">
             <h3 className="text-lg font-semibold mb-4">통계</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
@@ -67,9 +60,25 @@ export const Home: React.FC = () => {
         </motion.div>
       </main>
 
+      {/* User Greeting - Bottom */}
+      <div className="fixed bottom-32 left-0 right-0 z-30 pointer-events-none">
+        <div className="w-full max-w-md mx-auto px-4">
+          <motion.div
+            className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-2xl shadow-lg pointer-events-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <h2 className="text-xl font-bold mb-1">
+              안녕하세요, {user?.name || '게스트'}님
+            </h2>
+            <p className="text-purple-100 text-sm">오늘도 소중한 하루 보내세요</p>
+          </motion.div>
+        </div>
+      </div>
+
       {/* Bottom Navigation */}
       <NavButtons />
     </div>
   );
 };
-
