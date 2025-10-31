@@ -50,6 +50,7 @@ export async function initializeVectorStore(): Promise<void> {
         text TEXT NOT NULL,
         emotion TEXT,
         createdAt DATETIME NOT NULL,
+        embedding BLOB,
         savedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_userId ON diary_vectors(userId);
@@ -75,10 +76,10 @@ export async function initializeVectorStore(): Promise<void> {
 }
 
 /**
- * Add a diary entry to SQLite vector store
+ * Add a diary entry to SQLite vector store with embedding
  */
 export async function addDiaryToVectorStore(diary: Diary): Promise<void> {
-  if (!vectorStore || !vectorStore.db) {
+  if (!vectorStore || !vectorStore.db || !vectorStore.embeddings) {
     console.warn('⚠️  Vector store not initialized. Skipping add operation.');
     return;
   }
@@ -86,10 +87,17 @@ export async function addDiaryToVectorStore(diary: Diary): Promise<void> {
   try {
     const db = vectorStore.db as Database.Database;
 
-    // Insert or replace diary in vector store
+    // Generate embedding for the diary content
+    console.log(`📝 Generating embedding for diary ${diary.id}...`);
+    const embedding = await vectorStore.embeddings.embedQuery(diary.text);
+
+    // Convert embedding array to binary format for storage
+    const embeddingBuffer = Buffer.from(JSON.stringify(embedding));
+
+    // Insert or replace diary in vector store with embedding
     const stmt = db.prepare(`
-      INSERT OR REPLACE INTO diary_vectors (id, userId, text, emotion, createdAt)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO diary_vectors (id, userId, text, emotion, createdAt, embedding)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -97,48 +105,80 @@ export async function addDiaryToVectorStore(diary: Diary): Promise<void> {
       diary.userId,
       diary.text,
       diary.emotion || 'unknown',
-      diary.createdAt
+      diary.createdAt,
+      embeddingBuffer
     );
 
-    console.log(`✅ Diary ${diary.id} added to SQLite Vector Store`);
+    console.log(`✅ Diary ${diary.id} added to Vector Store with embedding (${embedding.length} dimensions)`);
   } catch (error) {
     console.error('❌ Error adding diary to vector store:', error);
   }
 }
 
 /**
- * Search for similar diaries from SQLite using keyword matching
+ * Calculate cosine similarity between two vectors
+ */
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  if (vecA.length !== vecB.length) return 0;
+
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    magnitudeA += vecA[i] * vecA[i];
+    magnitudeB += vecB[i] * vecB[i];
+  }
+
+  magnitudeA = Math.sqrt(magnitudeA);
+  magnitudeB = Math.sqrt(magnitudeB);
+
+  if (magnitudeA === 0 || magnitudeB === 0) return 0;
+
+  return dotProduct / (magnitudeA * magnitudeB);
+}
+
+/**
+ * Search for semantically similar diaries using vector embeddings
  */
 export async function searchSimilarDiaries(
   diaryContent: string,
   userId: string,
   limit: number = 3
 ): Promise<any[]> {
-  if (!vectorStore || !vectorStore.db) {
+  if (!vectorStore || !vectorStore.db || !vectorStore.embeddings) {
     console.warn('⚠️  Vector store not initialized. Returning empty results.');
     return [];
   }
 
   try {
     const db = vectorStore.db as Database.Database;
-    const contentWords = diaryContent.toLowerCase().split(/\s+/);
+
+    // Generate embedding for the query
+    console.log(`🔍 Generating query embedding...`);
+    const queryEmbedding = await vectorStore.embeddings.embedQuery(diaryContent);
 
     // Get all diaries for this user from SQLite
     const stmt = db.prepare(`
-      SELECT id, text, emotion, createdAt
+      SELECT id, text, emotion, createdAt, embedding
       FROM diary_vectors
-      WHERE userId = ?
+      WHERE userId = ? AND embedding IS NOT NULL
       ORDER BY createdAt DESC
     `);
 
-    const diaries = stmt.all(userId) as Array<{ id: string; text: string; emotion: string; createdAt: string }>;
+    const diaries = stmt.all(userId) as Array<{ id: string; text: string; emotion: string; createdAt: string; embedding: Buffer | null }>;
 
-    // Calculate similarity for each diary
+    // Calculate semantic similarity for each diary
     const results = diaries
       .map((diary) => {
-        const diaryWords = diary.text.toLowerCase().split(/\s+/);
-        const matchCount = contentWords.filter((w) => diaryWords.includes(w)).length;
-        const similarity = contentWords.length > 0 ? matchCount / contentWords.length : 0;
+        if (!diary.embedding) return null;
+
+        // Parse stored embedding
+        const storedEmbedding = JSON.parse(diary.embedding.toString('utf-8')) as number[];
+
+        // Calculate cosine similarity
+        const similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
 
         return {
           id: diary.id,
@@ -148,11 +188,11 @@ export async function searchSimilarDiaries(
           similarity,
         };
       })
-      .filter((r) => r.similarity > 0.1)
-      .sort((a, b) => b.similarity - a.similarity)
+      .filter((r) => r !== null && r.similarity > 0.5) // Threshold for semantic similarity
+      .sort((a, b) => b!.similarity - a!.similarity)
       .slice(0, limit);
 
-    console.log(`✅ Found ${results.length} similar diaries for user ${userId}`);
+    console.log(`✅ Found ${results.length} semantically similar diaries for user ${userId}`);
     return results;
   } catch (error) {
     console.error('❌ Error searching similar diaries:', error);
