@@ -153,7 +153,7 @@ export async function searchSimilarDiaries(
           }
 
           // Calculate semantic similarity for each diary
-          const results = (rows || [])
+          const allResults = (rows || [])
             .map((diary) => {
               if (!diary.embedding) return null;
 
@@ -177,15 +177,23 @@ export async function searchSimilarDiaries(
                 return null;
               }
             })
-            .filter((r) => {
-              // Filter by similarity threshold and exclude specified diary
-              if (r === null || r.similarity <= 0.5) return false;
-              if (excludeDiaryId && r.id === excludeDiaryId) return false;
-              return true;
-            })
-            .sort((a, b) => b!.similarity - a!.similarity)
+            .filter((r) => r !== null)
+            .sort((a, b) => b.similarity - a.similarity);
+
+          // First, exclude the current diary if specified
+          let filteredResults = allResults;
+          if (excludeDiaryId) {
+            console.log(`🔍 All results before exclusion:`, allResults.map((r) => ({ id: r.id, similarity: r.similarity })));
+            filteredResults = allResults.filter((r) => r.id !== excludeDiaryId);
+            console.log(`⏭️  Excluding diary ${excludeDiaryId} (current diary)`);
+          }
+
+          // Then apply similarity threshold (after exclusion, so we can get the next best match)
+          const results = filteredResults
+            .filter((r) => r.similarity > 0.5) // Lowered to 0.5 (was: <= 0.5 would exclude)
             .slice(0, limit);
 
+          console.log(`🔍 Filtered results (excluding ${excludeDiaryId}):`, results.map((r) => ({ id: r.id, similarity: r.similarity })));
           console.log(`✅ Found ${results.length} semantically similar diaries for user ${userId}`);
           resolve(results);
         }
