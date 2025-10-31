@@ -15,20 +15,32 @@ export const CalendarDetail: React.FC = () => {
   const { characters, loadCharacters } = useCharacters();
   const { orbs, loadOrbs } = useMemoryOrbs();
   const [replies, setReplies] = useState<ReinterpretationReply[]>([]);
+  const [reinterpretationNote, setReinterpretationNote] = useState<string | undefined>(undefined);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (diaryId) {
       loadDiary(diaryId);
       loadCharacters();
+    }
+  }, [diaryId, loadDiary, loadCharacters]);
 
-      // Find orb and get replies
+  // Find orb and get reinterpretation data
+  useEffect(() => {
+    if (diaryId) {
       const orb = orbs.find(o => o.diaryId === diaryId);
-      if (orb?.reinterpretationReplies) {
-        setReplies(orb.reinterpretationReplies);
+      if (orb) {
+        // Set reinterpretation note if it exists
+        if (orb.reinterpretationNote) {
+          setReinterpretationNote(orb.reinterpretationNote);
+        }
+        // Set replies if they exist
+        if (orb.reinterpretationReplies) {
+          setReplies(orb.reinterpretationReplies);
+        }
       }
     }
-  }, [diaryId, loadDiary, loadCharacters, orbs]);
+  }, [diaryId, orbs]);
 
   const handleDelete = async () => {
     if (!diaryId || !diary) return;
@@ -158,11 +170,33 @@ export const CalendarDetail: React.FC = () => {
         );
       })()}
 
+      {/* User's Reinterpretation Note */}
+      {reinterpretationNote && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8"
+        >
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-5 shadow-md border-2 border-purple-200"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">✨</span>
+              <span className="font-semibold text-purple-700">내 다시빛</span>
+            </div>
+            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{reinterpretationNote}</p>
+          </motion.div>
+        </motion.div>
+      )}
+
       {/* Reinterpretation Replies */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: reinterpretationNote ? 0.8 : 0.6 }}
         className="mt-8"
       >
         {replies.length > 0 ? (
@@ -198,9 +232,11 @@ export const CalendarDetail: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="text-center text-gray-500 py-8">
-            아직 다시빛 응답이 없습니다.
-          </div>
+          !reinterpretationNote && (
+            <div className="text-center text-gray-500 py-8">
+              아직 다시빛 응답이 없습니다.
+            </div>
+          )
         )}
       </motion.div>
     </div>

@@ -22,6 +22,7 @@ export const Reinterpret: React.FC = () => {
   
   const [stage, setStage] = useState<Stage>('orb-rolling');
   const [similarDiary, setSimilarDiary] = useState<Diary | null>(null);
+  const [similarOrb, setSimilarOrb] = useState<MemoryOrbType | null>(null);
   const [reinterpretationText, setReinterpretationText] = useState('');
   const [relatedOrb, setRelatedOrb] = useState<MemoryOrbType | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,32 +34,37 @@ export const Reinterpret: React.FC = () => {
     }
   }, [diaryId, loadDiary, loadCharacters]);
 
-  // Find related orb - update when orbs change
+  // Find related orb (current diary's orb) - update when orbs change
   useEffect(() => {
     if (diary) {
       const orb = orbs.find(o => o.diaryId === diary.id);
       if (orb) {
         setRelatedOrb(orb);
-      } else {
-        // Create dummy orb for testing if no orb found
-        const dummyOrb: MemoryOrbType = {
-          id: `dummy-orb-${diary.id}`,
-          diaryId: diary.id,
-          date: diary.createdAt || new Date().toISOString(),
-          emotion: (diary.emotion as any) || 'happy',
-          isReinterpreted: false,
-        };
-        setRelatedOrb(dummyOrb);
       }
     }
   }, [diary, orbs]);
 
-  // Load similar diary after current diary is loaded
+  // Find similar orb (similar diary's orb) - update when similar diary and orbs change
+  useEffect(() => {
+    if (similarDiary) {
+      const orb = orbs.find(o => o.diaryId === similarDiary.id);
+      if (orb) {
+        setSimilarOrb(orb);
+      }
+    }
+  }, [similarDiary, orbs]);
+
+  // Load similar diary after current diary and orbs are loaded
   useEffect(() => {
     const fetchSimilarDiary = async () => {
       if (!diary || !diaryId) return;
 
       try {
+        // Make sure orbs are loaded first
+        if (orbs.length === 0) {
+          await loadOrbs();
+        }
+
         const similar = await apiFetch<Diary>(`/diaries/${diaryId}/similar`);
         setSimilarDiary(similar);
         
@@ -68,33 +74,15 @@ export const Reinterpret: React.FC = () => {
         }, 2000);
       } catch (error) {
         console.error('Failed to load similar diary:', error);
-        // Use dummy data for testing if no similar diary found
-        const now = new Date().toISOString();
-        const dummyDiary: Diary = {
-          id: 'dummy-id',
-          userId: diary.userId,
-          content: '오늘은 정말 힘든 하루였어. 모든 일이 잘못되어 가는 것 같았고, 내 마음도 무너져 내리는 느낌이었어. 하지만 그 순간들 속에서도 나는 무엇인가를 배울 수 있었다는 것을 깨달았어. 힘들었지만 성장의 시간이었다고 생각해.',
-          date: now,
-          createdAt: now,
-          updatedAt: now,
-          emotion: 'sad',
-          aiCharacter: 'HeartOrb Companion',
-          aiResponse: '',
-          isEvolved: false,
-        };
-        setSimilarDiary(dummyDiary);
-        
-        // Start orb rolling animation
-        setTimeout(() => {
-          setStage('show-diary');
-        }, 2000);
+        alert('유사한 일기를 찾을 수 없습니다. 다른 일기를 먼저 작성해주세요.');
+        navigate('/calendar');
       }
     };
 
     if (diary && stage === 'orb-rolling') {
       fetchSimilarDiary();
     }
-  }, [diary, diaryId, stage]);
+  }, [diary, diaryId, stage, orbs.length, loadOrbs, navigate]);
 
   // Auto transition from show-diary to input (after showing diary and character messages)
   useEffect(() => {
@@ -112,11 +100,15 @@ export const Reinterpret: React.FC = () => {
 
     setIsProcessing(true);
     try {
-      // Mark orb as reinterpreted with the user's text (only if orb exists in DB)
-      if (relatedOrb.id && !relatedOrb.id.startsWith('dummy-')) {
+      // Mark orb as reinterpreted with the user's text
+      if (relatedOrb?.id) {
         await markAsReinterpreted(relatedOrb.id, reinterpretationText);
         // Refresh orbs to get updated state (this updates the orbs state)
         await loadOrbs();
+      } else {
+        alert('구슬을 찾을 수 없습니다.');
+        setIsProcessing(false);
+        return;
       }
       
       // Update relatedOrb for immediate display
@@ -131,12 +123,8 @@ export const Reinterpret: React.FC = () => {
       }, 3000);
     } catch (error) {
       console.error('Failed to save reinterpretation:', error);
-      // Even if save fails, show the completed orb for testing
-      setRelatedOrb({ ...relatedOrb, isReinterpreted: true });
-      setStage('completed');
-      setTimeout(() => {
-        navigate('/calendar');
-      }, 3000);
+      alert('다시빛 저장에 실패했습니다.');
+      setIsProcessing(false);
     }
   };
 
@@ -148,7 +136,15 @@ export const Reinterpret: React.FC = () => {
     );
   }
 
-  const orbColor = relatedOrb ? EMOTION_COLORS[relatedOrb.emotion] : '#A78BFA';
+  // Use similar orb's color for rolling animation
+  // If orb not found, use emotion from similar diary
+  const orbColor = similarOrb 
+    ? EMOTION_COLORS[similarOrb.emotion]
+    : similarDiary?.emotion && similarDiary.emotion in EMOTION_COLORS
+    ? EMOTION_COLORS[similarDiary.emotion as keyof typeof EMOTION_COLORS]
+    : relatedOrb 
+    ? EMOTION_COLORS[relatedOrb.emotion] 
+    : '#A78BFA';
 
   return (
     <div className="mobile-container min-h-screen bg-gradient-to-b from-purple-100 to-pink-100 p-6">

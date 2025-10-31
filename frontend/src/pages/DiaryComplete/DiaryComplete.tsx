@@ -16,6 +16,7 @@ export const DiaryComplete: React.FC = () => {
   const [characterComments, setCharacterComments] = useState<string[]>([]);
   const [isGeneratingComments, setIsGeneratingComments] = useState(false);
   const [spokenMessages, setSpokenMessages] = useState<Record<number, string>>({}); // 각 캐릭터가 말한 메시지 저장
+  const [showReinterpretButton, setShowReinterpretButton] = useState(false);
 
   useEffect(() => {
     if (diaryId) {
@@ -109,16 +110,10 @@ export const DiaryComplete: React.FC = () => {
     // 모든 캐릭터가 말한 후 (말풍선은 계속 유지)
     const timeout4 = setTimeout(() => {
       setActiveCharacterIndex(null);
+      // 다시빛 구슬 만들기 버튼 표시
+      setShowReinterpretButton(true);
     }, 9000);
     timeouts.push(timeout4);
-
-    // 모든 캐릭터가 말한 후 자동으로 재해석 페이지로 이동
-    const timeout5 = setTimeout(() => {
-      if (diaryId) {
-        navigate(`/reinterpret/${diaryId}`);
-      }
-    }, 10000);
-    timeouts.push(timeout5);
 
     // Cleanup function
     return () => {
@@ -199,6 +194,28 @@ export const DiaryComplete: React.FC = () => {
         })}
       </div>
 
+      {/* 다시빛 구슬 만들기 버튼 */}
+      {showReinterpretButton && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 flex justify-center"
+        >
+          <motion.button
+            onClick={() => {
+              if (diaryId) {
+                navigate(`/reinterpret/${diaryId}`);
+              }
+            }}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold shadow-lg hover:from-purple-600 hover:to-pink-600 transition-all"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            다시빛 구슬 만들기
+          </motion.button>
+        </motion.div>
+      )}
     </div>
   );
 };
