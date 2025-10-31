@@ -108,7 +108,7 @@ ${persona.instruction}
 답변은 반드시 2~3문장으로 작성하고, 한국어로 작성하세요.`;
 
       try {
-        const model = genAIInstance.getGenerativeModel({ model: 'gemini-pro' });
+        const model = genAIInstance.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const result = await model.generateContent(prompt);
         const message = result.response.text();
 
@@ -191,7 +191,7 @@ export async function analyzeEmotions(diaryContent: string): Promise<string> {
       return '감정: neutral\n이유: API 미사용으로 기본값 반환';
     }
 
-    const model = genAIInstance.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAIInstance.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
 다음의 일기 내용에서 주요 감정을 분석하세요.
