@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDiary } from '@/hooks/useDiary';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
+import { EMOTION_COLORS, EmotionType } from '@/types';
 
 export const DiaryWrite: React.FC = () => {
   const navigate = useNavigate();
@@ -27,16 +28,22 @@ export const DiaryWrite: React.FC = () => {
     { value: 'cursive', label: '손글씨' },
   ];
 
-  const emotions = [
-    { value: 'happy', label: '기쁨', color: '#FFD93D' },
-    { value: 'sad', label: '슬픔', color: '#6BCAE2' },
-    { value: 'angry', label: '화남', color: '#FF6B6B' },
-    { value: 'anxious', label: '불안', color: '#A8DADC' },
-    { value: 'calm', label: '평온', color: '#95E1D3' },
-    { value: 'excited', label: '설렘', color: '#FF9F66' },
-    { value: 'grateful', label: '감사', color: '#FFD3A5' },
-    { value: 'lonely', label: '외로움', color: '#B19CD9' },
-  ];
+  const emotionLabels: Record<EmotionType, string> = {
+    happy: '기쁨',
+    sad: '슬픔',
+    angry: '화남',
+    anxious: '불안',
+    calm: '평온',
+    excited: '설렘',
+    grateful: '감사',
+    lonely: '외로움',
+  };
+
+  const emotions = (Object.keys(EMOTION_COLORS) as EmotionType[]).map((emotion) => ({
+    value: emotion,
+    label: emotionLabels[emotion],
+    color: EMOTION_COLORS[emotion],
+  }));
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
