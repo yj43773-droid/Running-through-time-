@@ -12,6 +12,7 @@ build/
 *.db
 *.sqlite
 *.sqlite3
+vector_data/
 
 # Logs
 *.log
