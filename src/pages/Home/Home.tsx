@@ -6,11 +6,13 @@ import { NavButtons } from '@/components/NavButtons';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { useAuth } from '@/contexts/AuthContext';
 import { MemoryOrb } from '@/types';
+// 캡슐 머신 이미지 import (이미지 파일을 assets 폴더에 넣으면 됩니다)
+// import capsuleMachineImage from '@/assets/capsule-machine.png';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { orbs, loadOrbs } = useMemoryOrbs();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Always try to load orbs (will be empty if not authenticated)
@@ -39,7 +41,12 @@ export const Home: React.FC = () => {
           transition={{ duration: 0.5 }}
         >
           {/* Capsule Machine */}
-          <CapsuleMachine orbs={orbs} onOrbClick={handleOrbClick} />
+          <CapsuleMachine 
+            orbs={orbs} 
+            onOrbClick={handleOrbClick}
+            machineImage={undefined} // 이미지 추가 후: import한 이미지 변수 사용
+            // 예: machineImage={capsuleMachineImage}
+          />
 
           {/* Stats Section */}
           <div className="mt-8 bg-white rounded-2xl p-6 shadow-md">

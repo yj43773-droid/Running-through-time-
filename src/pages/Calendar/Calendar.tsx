@@ -2,14 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MemoryOrb } from '@/components/MemoryOrb';
-import { NavButtons } from '@/components/NavButtons';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { useAuth } from '@/contexts/AuthContext';
-import { CalendarEntry, MemoryOrb as MemoryOrbType } from '@/types';
+import { CalendarEntry, MemoryOrb as MemoryOrbType, EMOTION_COLORS, EmotionType } from '@/types';
 
 export const Calendar: React.FC = () => {
   const navigate = useNavigate();
-  const { calendarEntries, loadOrbs } = useMemoryOrbs();
+  const { calendarEntries, loadOrbs, orbs } = useMemoryOrbs();
   const { checkAuth, isAuthenticated } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
@@ -18,15 +17,23 @@ export const Calendar: React.FC = () => {
   }, [checkAuth]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
+    if (isAuthenticated) {
+      loadOrbs();
     }
-    loadOrbs();
-  }, [isAuthenticated, navigate, loadOrbs]);
+  }, [isAuthenticated, loadOrbs]);
 
   const handleOrbClick = (orb: MemoryOrbType) => {
     navigate(`/calendar/detail/${orb.diaryId}`);
+  };
+
+  const handleDateClick = (date: Date) => {
+    // 날짜 클릭 시 해당 날짜의 일기 목록 보기 (선택적)
+    const dateStr = date.toISOString().split('T')[0];
+    const entry = calendarEntries.find(e => e.date.startsWith(dateStr));
+    if (entry && entry.orbs.length > 0) {
+      // 첫 번째 일기로 이동
+      navigate(`/calendar/detail/${entry.orbs[0].diaryId}`);
+    }
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -37,12 +44,14 @@ export const Calendar: React.FC = () => {
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
 
-    return { daysInMonth, startingDayOfWeek };
+    return { daysInMonth, startingDayOfWeek, year, month };
   };
 
-  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(selectedMonth);
-  const month = selectedMonth.getMonth();
-  const year = selectedMonth.getFullYear();
+  const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(selectedMonth);
+  const today = new Date();
+  const isCurrentMonth = 
+    year === today.getFullYear() && 
+    month === today.getMonth();
 
   const getOrbsForDate = (day: number): MemoryOrbType[] => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -50,118 +59,234 @@ export const Calendar: React.FC = () => {
     return entry?.orbs || [];
   };
 
-  if (!isAuthenticated) {
-    return null;
-  }
+  const formatMonthYear = (date: Date) => {
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+  };
+
+  const goToPreviousMonth = () => {
+    setSelectedMonth(new Date(year, month - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setSelectedMonth(new Date(year, month + 1, 1));
+  };
+
+  const goToToday = () => {
+    setSelectedMonth(new Date());
+  };
+
+  const emotionLabels: Record<EmotionType, string> = {
+    happy: '기쁨',
+    sad: '슬픔',
+    angry: '화남',
+    anxious: '불안',
+    calm: '평온',
+    excited: '설렘',
+    grateful: '감사',
+    lonely: '외로움',
+  };
 
   return (
-    <div className="mobile-container pb-20 min-h-screen bg-gradient-to-b from-amber-50 to-amber-100">
-      {/* Header */}
-      <header className="safe-area-top bg-gradient-to-r from-amber-400 to-orange-400 text-white p-6 rounded-b-3xl shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={() =>
-              setSelectedMonth(new Date(year, month - 1, 1))
-            }
-            className="text-white text-xl"
+    <div className="mobile-container pb-20 min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100">
+      {/* Back Button - 왼쪽 위 */}
+      <div className="safe-area-top p-4">
+        <motion.button
+          onClick={() => navigate('/home')}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-md hover:shadow-lg transition-all"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="text-xl text-gray-700">←</span>
+        </motion.button>
+      </div>
+
+      {/* Month Navigation - Header 대신 간단한 네비게이션 */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-md">
+          <motion.button
+            onClick={goToPreviousMonth}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
-            ←
-          </button>
-          <h2 className="text-2xl font-bold">
-            {year}년 {month + 1}월
-          </h2>
-          <button
-            onClick={() =>
-              setSelectedMonth(new Date(year, month + 1, 1))
-            }
-            className="text-white text-xl"
+            <span className="text-xl font-bold text-gray-700">‹</span>
+          </motion.button>
+          
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-gray-800 mb-1">{formatMonthYear(selectedMonth)}</h2>
+            {isCurrentMonth && (
+              <button
+                onClick={goToToday}
+                className="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full hover:bg-purple-200 transition-all"
+              >
+                오늘로 이동
+              </button>
+            )}
+          </div>
+
+          <motion.button
+            onClick={goToNextMonth}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-all"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
-            →
-          </button>
+            <span className="text-xl font-bold text-gray-700">›</span>
+          </motion.button>
         </div>
-      </header>
+      </div>
 
       {/* Bookshelf Style Calendar */}
-      <main className="p-4">
+      <div className="p-4">
         {/* Weekday Headers */}
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {['일', '월', '화', '수', '목', '금', '토'].map((day) => (
-            <div key={day} className="text-center text-sm font-semibold text-gray-700">
+        <div className="grid grid-cols-7 gap-2 mb-3">
+          {['일', '월', '화', '수', '목', '금', '토'].map((day, index) => (
+            <div
+              key={day}
+              className={`text-center text-sm font-semibold py-2 ${
+                index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-700'
+              }`}
+            >
               {day}
             </div>
           ))}
         </div>
 
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-2">
-          {/* Empty cells for days before month starts */}
-          {Array.from({ length: startingDayOfWeek }).map((_, index) => (
-            <div key={`empty-${index}`} className="h-16"></div>
-          ))}
+        {/* Calendar Grid - Bookshelf Style */}
+        <div className="bg-white rounded-2xl p-4 shadow-lg">
+          <div className="grid grid-cols-7 gap-2">
+            {/* Empty cells for days before month starts */}
+            {Array.from({ length: startingDayOfWeek }).map((_, index) => (
+              <div
+                key={`empty-${index}`}
+                className="h-20 bg-gray-50 rounded-lg border border-gray-100"
+              />
+            ))}
 
-          {/* Days of the month */}
-          {Array.from({ length: daysInMonth }).map((_, index) => {
-            const day = index + 1;
-            const orbs = getOrbsForDate(day);
-            const isToday =
-              day === new Date().getDate() &&
-              month === new Date().getMonth() &&
-              year === new Date().getFullYear();
+            {/* Days of the month */}
+            {Array.from({ length: daysInMonth }).map((_, index) => {
+              const day = index + 1;
+              const date = new Date(year, month, day);
+              const orbs = getOrbsForDate(day);
+              const isToday =
+                isCurrentMonth &&
+                day === today.getDate();
+              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+              const hasOrbs = orbs.length > 0;
 
-            return (
-              <motion.div
-                key={day}
-                className={`h-16 p-1 border-2 rounded-lg ${
-                  isToday ? 'border-purple-500 bg-purple-50' : 'border-amber-200 bg-amber-50'
-                }`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.01 }}
-              >
-                <div className="text-xs font-semibold text-gray-700 mb-1">{day}</div>
-                <div className="flex flex-wrap gap-1">
-                  {orbs.map((orb) => (
-                    <MemoryOrb
-                      key={orb.id}
-                      orb={orb}
-                      size="sm"
-                      onClick={() => handleOrbClick(orb)}
-                      showGlitter={orb.isReinterpreted}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            );
-          })}
+              return (
+                <motion.div
+                  key={day}
+                  className={`h-20 p-2 rounded-lg border-2 transition-all cursor-pointer relative overflow-hidden ${
+                    isToday
+                      ? 'border-purple-500 bg-purple-50 shadow-md scale-105'
+                      : hasOrbs
+                      ? 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-md'
+                      : isWeekend
+                      ? 'border-gray-200 bg-gray-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.01 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleDateClick(date)}
+                >
+                  {/* Date Number */}
+                  <div
+                    className={`text-xs font-semibold mb-1 ${
+                      isToday
+                        ? 'text-purple-700 font-bold'
+                        : isWeekend
+                        ? 'text-gray-500'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    {isToday && (
+                      <span className="inline-block w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs mr-1">
+                        {day}
+                      </span>
+                    )}
+                    {!isToday && day}
+                  </div>
+
+                  {/* Memory Orbs */}
+                  <div className="flex flex-wrap gap-1 justify-center items-center">
+                    {orbs.slice(0, 3).map((orb) => (
+                      <motion.div
+                        key={orb.id}
+                        whileHover={{ scale: 1.2, zIndex: 10 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOrbClick(orb);
+                        }}
+                      >
+                        <MemoryOrb
+                          orb={orb}
+                          size="sm"
+                          showGlitter={orb.isReinterpreted}
+                        />
+                      </motion.div>
+                    ))}
+                    {orbs.length > 3 && (
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-[8px] font-bold shadow-sm">
+                        +{orbs.length - 3}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bookshelf decoration - 책장 느낌 */}
+                  {hasOrbs && (
+                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-400 opacity-30"></div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Legend */}
-        <div className="mt-6 bg-white rounded-xl p-4 shadow-md">
-          <h3 className="text-sm font-semibold mb-2">감정 색상</h3>
-          <div className="grid grid-cols-4 gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded-full bg-yellow-400"></div>
-              <span>기쁨</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded-full bg-blue-400"></div>
-              <span>슬픔</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded-full bg-red-400"></div>
-              <span>화남</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded-full bg-purple-400"></div>
-              <span>외로움</span>
+        {/* Legend - 감정 색상 가이드 */}
+        <div className="mt-6 bg-white rounded-2xl p-5 shadow-lg">
+          <h3 className="text-base font-bold mb-4 text-gray-800 flex items-center gap-2">
+            <span className="text-2xl">🎨</span>
+            감정 색상 가이드
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {(Object.keys(EMOTION_COLORS) as EmotionType[]).map((emotion) => (
+              <motion.div
+                key={emotion}
+                className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                whileHover={{ scale: 1.02 }}
+              >
+                <div
+                  className="w-6 h-6 rounded-full shadow-sm border-2 border-white"
+                  style={{ backgroundColor: EMOTION_COLORS[emotion] }}
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {emotionLabels[emotion]}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* 통계 정보 */}
+          <div className="mt-5 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{orbs.length}</div>
+                <div className="text-xs text-gray-600 mt-1">전체 구슬</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-pink-600">
+                  {orbs.filter(o => o.isReinterpreted).length}
+                </div>
+                <div className="text-xs text-gray-600 mt-1">재해석 구슬</div>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Bottom Navigation */}
-      <NavButtons />
     </div>
   );
 };
-

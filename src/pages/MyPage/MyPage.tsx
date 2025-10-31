@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { NavButtons } from '@/components/NavButtons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { EMOTION_COLORS, EmotionType } from '@/types';
@@ -51,13 +50,20 @@ export const MyPage: React.FC = () => {
 
   return (
     <div className="mobile-container pb-20 min-h-screen bg-gradient-to-b from-purple-50 to-pink-50">
-      {/* Header */}
-      <header className="safe-area-top bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-b-3xl shadow-lg">
-        <h2 className="text-2xl font-bold mb-1">마이페이지</h2>
-      </header>
+      {/* Back Button - 왼쪽 위 */}
+      <div className="safe-area-top p-4">
+        <motion.button
+          onClick={() => navigate('/home')}
+          className="w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-md hover:shadow-lg transition-all"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="text-xl text-gray-700">←</span>
+        </motion.button>
+      </div>
 
       {/* Profile Section */}
-      <main className="p-6">
+      <main className="p-6 pt-2">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,8 +147,6 @@ export const MyPage: React.FC = () => {
         </motion.div>
       </main>
 
-      {/* Bottom Navigation */}
-      <NavButtons />
     </div>
   );
 };
