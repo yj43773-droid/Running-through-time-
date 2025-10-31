@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from '@/pages/Login';
 import { Home } from '@/pages/Home';
 import { DiaryWrite } from '@/pages/DiaryWrite';
-import { DiaryComplete } from '@/pages/DiaryComplete';
+import { DiaryComplete, DiaryCompleteV2 } from '@/pages/DiaryComplete';
 import { Reinterpret } from '@/pages/Reinterpret';
 import { Calendar } from '@/pages/Calendar';
 import { CalendarDetail } from '@/pages/CalendarDetail';
@@ -52,6 +52,14 @@ function AppRoutes() {
           element={
             <PrivateRoute>
               <DiaryComplete />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/diary/complete/v2/:diaryId"
+          element={
+            <PrivateRoute>
+              <DiaryCompleteV2 />
             </PrivateRoute>
           }
         />
