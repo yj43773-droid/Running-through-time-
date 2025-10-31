@@ -55,7 +55,7 @@ export const useCharacters = () => {
   }, [characters]);
 
   const getReinterpretationPrompt = useCallback(async (
-    diaryContent: string,
+    _diaryContent: string, // Currently unused, kept for API compatibility
     characterId: string
   ): Promise<ReinterpretationPrompt | null> => {
     setIsLoading(true);
@@ -89,8 +89,8 @@ export const useCharacters = () => {
   }, [getCharacterById]);
 
   const submitReinterpretationReply = useCallback(async (
-    diaryId: string,
-    characterId: string,
+    _diaryId: string, // Currently unused, kept for API compatibility
+    _characterId: string, // Currently unused, kept for API compatibility
     reply: string
   ): Promise<ReinterpretationReply | null> => {
     setIsLoading(true);
@@ -105,12 +105,12 @@ export const useCharacters = () => {
       // const data = await response.json();
       
       // Placeholder
-      const character = getCharacterById(characterId);
+      const character = getCharacterById(_characterId);
       if (!character) return null;
 
       const replyData: ReinterpretationReply = {
         id: Date.now().toString(),
-        characterId,
+        characterId: _characterId,
         characterName: character.name,
         message: reply,
         timestamp: new Date().toISOString(),

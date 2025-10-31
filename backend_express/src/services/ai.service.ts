@@ -18,13 +18,20 @@ export async function generateResponses(
 ): Promise<PersonaResponse[]> {
   const apiKey = process.env.GOOGLE_API_KEY;
 
-  // Use RAG if API key is available
-  if (apiKey) {
-    return await ragService.generateRAGResponses(diary, userId);
+  // Check if API key is properly configured
+  if (!apiKey || apiKey.length < 20) {
+    console.warn('⚠️  GOOGLE_API_KEY not configured or invalid, using template responses');
+    return generateTemplateResponses(diary);
   }
 
-  // Fallback to template responses
-  return generateTemplateResponses(diary);
+  try {
+    // Try to use RAG if API key is available
+    console.log('📝 Attempting to generate AI responses using Gemini API...');
+    return await ragService.generateRAGResponses(diary, userId);
+  } catch (error) {
+    console.error('❌ RAG generation failed, falling back to templates:', error);
+    return generateTemplateResponses(diary);
+  }
 }
 
 /**
@@ -99,9 +106,17 @@ export function emotionToColor(emotion?: string): string | undefined {
 export async function analyzeEmotions(diaryContent: string): Promise<string> {
   const apiKey = process.env.GOOGLE_API_KEY;
 
-  if (!apiKey) {
+  // Check if API key is properly configured
+  if (!apiKey || apiKey.length < 20) {
+    console.warn('⚠️  GOOGLE_API_KEY not configured or invalid, returning neutral emotion');
     return 'neutral';
   }
 
-  return await ragService.analyzeEmotions(diaryContent);
+  try {
+    console.log('🎭 Attempting emotion analysis using Gemini API...');
+    return await ragService.analyzeEmotions(diaryContent);
+  } catch (error) {
+    console.error('❌ Emotion analysis failed:', error);
+    return 'neutral';
+  }
 }

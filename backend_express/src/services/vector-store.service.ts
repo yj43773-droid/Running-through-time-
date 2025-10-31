@@ -12,8 +12,8 @@ const diaryCache: Map<string, any> = new Map();
  */
 export async function initializeVectorStore(): Promise<void> {
   const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    console.warn('GOOGLE_API_KEY not set. Vector store will use fallback mode.');
+  if (!apiKey || apiKey.length < 20) {
+    console.warn('⚠️  GOOGLE_API_KEY not configured. Vector store will use fallback mode.');
     return;
   }
 
@@ -24,9 +24,10 @@ export async function initializeVectorStore(): Promise<void> {
       model: 'embedding-001',
     });
 
-    console.log('Vector store initialized successfully');
+    console.log('✅ Vector store initialized successfully');
   } catch (error) {
-    console.warn('Vector store initialization warning:', error);
+    console.warn('⚠️  Vector store initialization warning:', error);
+    console.warn('   → Using in-memory caching fallback');
   }
 }
 

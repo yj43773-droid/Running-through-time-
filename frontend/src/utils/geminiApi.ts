@@ -1,9 +1,11 @@
 /**
  * Gemini API를 사용하여 캐릭터별 커멘트 생성
+ * @deprecated Backend의 AI Service를 사용하므로 이 파일은 더 이상 사용되지 않습니다.
  */
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+let hasWarned = false;
 
 interface GeminiRequest {
   contents: Array<{
@@ -93,7 +95,10 @@ export const generateCharacterComment = async (
   personality: string
 ): Promise<string> => {
   if (!GEMINI_API_KEY) {
-    console.warn('GEMINI_API_KEY가 설정되지 않았습니다. 기본 메시지를 반환합니다.');
+    if (!hasWarned) {
+      console.warn('[Deprecated] GEMINI_API_KEY가 설정되지 않았습니다. Backend의 AI Service를 사용하세요.');
+      hasWarned = true;
+    }
     return getDefaultMessage(characterName);
   }
 
