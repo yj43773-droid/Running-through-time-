@@ -55,31 +55,47 @@ export const useCharacters = () => {
   }, [characters]);
 
   const getReinterpretationPrompt = useCallback(async (
-    _diaryContent: string, // Currently unused, kept for API compatibility
+    diaryId: string,
     characterId: string
   ): Promise<ReinterpretationPrompt | null> => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/reinterpretation', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ diaryContent, characterId }),
-      // });
-      // const data = await response.json();
-      
-      // Placeholder
+      // Fetch context diary and character info
+      const contextResponse = await fetch(`/api/diaries/${diaryId}/reinterpret/context`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!contextResponse.ok) {
+        throw new Error('Failed to fetch context diary');
+      }
+
+      const contextData = await contextResponse.json();
+      const contextDiary = contextData.contextDiary;
       const character = getCharacterById(characterId);
+
       if (!character) return null;
 
-      const prompt: ReinterpretationPrompt = {
+      // Generate dynamic prompt based on context
+      let prompt = `${character.name}이(가) 당신의 일기를 읽고 공감의 말을 건네려 합니다.\n\n`;
+
+      if (contextDiary) {
+        prompt += `${character.name}은 당신과 비슷한 감정의 예전 일기도 찾았습니다:\n`;
+        prompt += `"${contextDiary.text.substring(0, 100)}..."\n`;
+        prompt += `(${contextDiary.createdAt.split('T')[0]} 작성, 감정: ${contextDiary.emotion})\n\n`;
+        prompt += `이 예전 일기를 보며 지금 당신의 감정에 대해 어떻게 생각하세요?`;
+      } else {
+        prompt += `당신의 감정을 이해하기 위해 이전 일기들을 살펴보았습니다.\n`;
+        prompt += `지금 당신의 진정한 감정을 공유해주시겠어요?`;
+      }
+
+      const reinterpretationPrompt: ReinterpretationPrompt = {
         characterId,
         characterName: character.name,
-        prompt: `${character.name}이(가) 당신의 일기를 읽고 공감의 말을 건네려 합니다...`,
+        prompt,
       };
 
-      return prompt;
+      return reinterpretationPrompt;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get reinterpretation prompt');
       return null;
@@ -89,28 +105,33 @@ export const useCharacters = () => {
   }, [getCharacterById]);
 
   const submitReinterpretationReply = useCallback(async (
-    _diaryId: string, // Currently unused, kept for API compatibility
-    _characterId: string, // Currently unused, kept for API compatibility
+    diaryId: string,
+    characterId: string,
     reply: string
   ): Promise<ReinterpretationReply | null> => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/reinterpretation/reply', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ diaryId, characterId, reply }),
-      // });
-      // const data = await response.json();
-      
-      // Placeholder
-      const character = getCharacterById(_characterId);
+      // Submit reply to server
+      const response = await fetch(`/api/diaries/${diaryId}/reinterpret/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ characterId, reply }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit reply');
+      }
+
+      await response.json();
+      const character = getCharacterById(characterId);
+
       if (!character) return null;
 
+      // Return reply data
       const replyData: ReinterpretationReply = {
-        id: Date.now().toString(),
-        characterId: _characterId,
+        id: `reply-${Date.now()}`,
+        characterId,
         characterName: character.name,
         message: reply,
         timestamp: new Date().toISOString(),

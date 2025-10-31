@@ -12,10 +12,16 @@ export const Reinterpret: React.FC = () => {
   const { diaryId } = useParams<{ diaryId: string }>();
   const navigate = useNavigate();
   const { diary, loadDiary, isLoading } = useDiary();
-  const { characters, getReinterpretationPrompt } = useCharacters();
+  const { characters, loadCharacters, getReinterpretationPrompt, submitReinterpretationReply } = useCharacters();
   const [prompt, setPrompt] = useState<ReinterpretationPrompt | null>(null);
   const [showOrb, setShowOrb] = useState(false);
   const [showPaper, setShowPaper] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    // Load characters
+    loadCharacters();
+  }, [loadCharacters]);
 
   useEffect(() => {
     if (diaryId) {
@@ -24,43 +30,47 @@ export const Reinterpret: React.FC = () => {
   }, [diaryId, loadDiary]);
 
   useEffect(() => {
-    const loadSimilarDiary = async () => {
-      // TODO: Load similar past diary
-      // For now, use current diary
-      if (diary && characters.length > 0) {
-        const character = characters[0]; // Use first character
-        const reinterpretPrompt = await getReinterpretationPrompt(
-          diary.content,
-          character.id
-        );
+    const loadReinterpretationPrompt = async () => {
+      if (diary && characters.length > 0 && diaryId) {
+        const character = characters[0]; // Use first character (루미)
+        const reinterpretPrompt = await getReinterpretationPrompt(diaryId, character.id);
         if (reinterpretPrompt) {
           setPrompt(reinterpretPrompt);
         }
       }
     };
 
-    if (diary && characters.length > 0) {
-      loadSimilarDiary();
+    if (diary && characters.length > 0 && diaryId) {
+      loadReinterpretationPrompt();
     }
-  }, [diary, characters, getReinterpretationPrompt]);
+  }, [diary, characters, diaryId, getReinterpretationPrompt]);
 
-  const handleReplySubmit = async (_reply: string) => {
-    // Animate diary to orb
-    setShowPaper(false);
-    
-    setTimeout(() => {
-      setShowOrb(true);
-    }, 500);
+  const handleReplySubmit = async (reply: string) => {
+    if (!diary || !prompt || isSubmitting) return;
 
-    // Mark orb as reinterpreted
-    if (diary) {
-      // TODO: Find related orb by diaryId and mark as reinterpreted via memory orbs service
+    setIsSubmitting(true);
+
+    try {
+      // Submit reply to server
+      const result = await submitReinterpretationReply(diary.id, prompt.characterId, reply);
+
+      if (result) {
+        // Animate diary to orb
+        setShowPaper(false);
+
+        setTimeout(() => {
+          setShowOrb(true);
+        }, 500);
+
+        // After animation, navigate to home
+        setTimeout(() => {
+          navigate('/home');
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Failed to submit reply:', error);
+      setIsSubmitting(false);
     }
-
-    // After animation, navigate to home
-    setTimeout(() => {
-      navigate('/home');
-    }, 3000);
   };
 
   if (isLoading || !diary) {
@@ -111,7 +121,7 @@ export const Reinterpret: React.FC = () => {
           transition={{ delay: 0.5 }}
           className="mt-6"
         >
-          <ReplyInput onSubmit={handleReplySubmit} />
+          <ReplyInput onSubmit={handleReplySubmit} disabled={isSubmitting} />
         </motion.div>
       )}
 

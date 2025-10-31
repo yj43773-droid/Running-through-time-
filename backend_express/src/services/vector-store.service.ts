@@ -141,11 +141,16 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 
 /**
  * Search for semantically similar diaries using vector embeddings
+ * @param diaryContent - Text content to search for similar diaries
+ * @param userId - User ID to limit results to
+ * @param limit - Maximum number of results to return (default: 3)
+ * @param excludeDiaryId - Diary ID to exclude from results (e.g., current diary)
  */
 export async function searchSimilarDiaries(
   diaryContent: string,
   userId: string,
-  limit: number = 3
+  limit: number = 3,
+  excludeDiaryId?: string
 ): Promise<any[]> {
   if (!vectorStore || !vectorStore.db || !vectorStore.embeddings) {
     console.warn('⚠️  Vector store not initialized. Returning empty results.');
@@ -182,13 +187,19 @@ export async function searchSimilarDiaries(
 
         return {
           id: diary.id,
+          text: diary.text,
           content: diary.text.substring(0, 100),
           emotion: diary.emotion,
           date: diary.createdAt,
           similarity,
         };
       })
-      .filter((r) => r !== null && r.similarity > 0.5) // Threshold for semantic similarity
+      .filter((r) => {
+        // Filter by similarity threshold and exclude specified diary
+        if (r === null || r.similarity <= 0.5) return false;
+        if (excludeDiaryId && r.id === excludeDiaryId) return false;
+        return true;
+      })
       .sort((a, b) => b!.similarity - a!.similarity)
       .slice(0, limit);
 

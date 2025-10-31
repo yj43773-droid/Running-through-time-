@@ -181,4 +181,108 @@ router.post('/:diaryId/refresh-ai', authenticate, async (req: Request, res: Resp
   }
 });
 
+// Get reinterpret context - finds semantically similar past diary
+router.get('/:diaryId/reinterpret/context', authenticate, async (req: Request, res: Response) => {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    // Search for semantically similar diaries (exclude current diary)
+    const similarDiaries = await aiService.searchContextDiaries(diary, diary.userId, 1);
+
+    if (similarDiaries.length === 0) {
+      return res.json({
+        contextDiary: null,
+        message: 'No similar past diaries found',
+      });
+    }
+
+    const contextDiary = similarDiaries[0];
+
+    return res.json({
+      contextDiary: {
+        id: contextDiary.id,
+        text: contextDiary.text,
+        emotion: contextDiary.emotion,
+        createdAt: contextDiary.date,
+        similarity: contextDiary.similarity,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Submit reinterpret reply - saves user response and marks orb
+router.post('/:diaryId/reinterpret/reply', authenticate, async (req: Request, res: Response) => {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    const { characterId, reply } = req.body;
+
+    if (!characterId || !reply) {
+      return res.status(400).json({ error: 'characterId and reply are required' });
+    }
+
+    // Get similar diary for context (to store reference)
+    const similarDiaries = await aiService.searchContextDiaries(diary, diary.userId, 1);
+    const linkedPastDiaryId = similarDiaries.length > 0 ? similarDiaries[0].id : null;
+
+    // Update diary with reinterpretation
+    await diaryService.updateDiary(diary.id, {
+      reinterpretation: reply,
+      linkedPastDiaryId,
+      isEvolved: true,
+    });
+
+    // Find and update the associated memory orb
+    const orbs = await aiService.findOrbByDiaryId(diary.id);
+    if (orbs && orbs.length > 0) {
+      const orb = orbs[0];
+      const existingReplies = orb.reinterpretationReplies || [];
+      const newReply = {
+        id: `reply-${Date.now()}`,
+        characterId,
+        characterName: getCharacterName(characterId),
+        message: reply,
+        timestamp: new Date().toISOString(),
+      };
+
+      await aiService.updateOrb(orb.id, {
+        isReinterpreted: true,
+        reinterpretationReplies: [...existingReplies, newReply],
+      });
+    }
+
+    const updated = await diaryService.getDiary(diary.id);
+    const serialized = await diaryService.serializeDiary(updated!);
+
+    return res.json({
+      success: true,
+      diary: serialized,
+      linkedPastDiaryId,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+function getCharacterName(characterId: string): string {
+  const characters: Record<string, string> = {
+    'char1': '루미',
+    'char2': '모카',
+    'char3': '제트',
+  };
+  return characters[characterId] || 'Unknown Character';
+}
+
 export default router;

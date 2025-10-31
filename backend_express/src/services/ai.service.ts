@@ -1,5 +1,8 @@
 import { Diary } from '../types';
 import * as ragService from './rag.service';
+import * as vectorStore from './vector-store.service';
+import * as orbService from './orb.service';
+import { db } from '../db';
 
 interface PersonaResponse {
   persona: string;
@@ -119,4 +122,53 @@ export async function analyzeEmotions(diaryContent: string): Promise<string> {
     console.error('❌ Emotion analysis failed:', error);
     return 'neutral';
   }
+}
+
+/**
+ * Search for semantically similar past diaries (for reinterpretation context)
+ */
+export async function searchContextDiaries(
+  diary: Diary,
+  userId: string,
+  limit: number = 1
+): Promise<any[]> {
+  console.log(`🔍 Searching for similar past diaries for context...`);
+  return await vectorStore.searchSimilarDiaries(
+    diary.text,
+    userId,
+    limit,
+    diary.id // Exclude current diary from results
+  );
+}
+
+/**
+ * Find memory orb by diary ID
+ */
+export function findOrbByDiaryId(diaryId: string): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    db.all(
+      'SELECT * FROM memory_orbs WHERE diaryId = ?',
+      [diaryId],
+      (err, rows) => {
+        if (err) reject(err);
+        else {
+          const orbs = (rows || []).map((orb: any) => ({
+            ...orb,
+            isReinterpreted: Boolean(orb.isReinterpreted),
+            reinterpretationReplies: orb.reinterpretationReplies
+              ? JSON.parse(orb.reinterpretationReplies)
+              : undefined,
+          }));
+          resolve(orbs);
+        }
+      }
+    );
+  });
+}
+
+/**
+ * Update memory orb
+ */
+export async function updateOrb(orbId: string, updates: any): Promise<any> {
+  return orbService.updateOrb(orbId, updates);
 }
