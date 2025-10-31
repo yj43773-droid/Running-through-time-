@@ -80,8 +80,8 @@ export const Character: React.FC<CharacterProps> = ({
           )}
         </motion.div>
 
-        {/* Character name - 간격 더 줄임 */}
-        <div className="text-sm font-semibold -mt-1" style={{ color: character.color }}>
+        {/* Character name - 캐릭터 바로 밑에 붙임 */}
+        <div className="text-sm font-semibold -mt-3" style={{ color: character.color }}>
           {character.name}
         </div>
       </div>

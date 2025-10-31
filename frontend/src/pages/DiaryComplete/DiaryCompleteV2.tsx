@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { Character } from '@/components/Character';
 import { useDiary } from '@/hooks/useDiary';
 import { useCharacters } from '@/hooks/useCharacters';
-import { generateCharacterComment } from '@/utils/geminiApi';
 
 export const DiaryCompleteV2: React.FC = () => {
   const { diaryId } = useParams<{ diaryId: string }>();
@@ -23,44 +22,51 @@ export const DiaryCompleteV2: React.FC = () => {
     }
   }, [diaryId, loadDiary, loadCharacters]);
 
-  // 일기와 캐릭터가 로드되면 Gemini API로 커멘트 생성 (pink → blue → yellow 순서)
+  // 일기와 캐릭터가 로드되면 Backend에서 가져온 AI 응답 사용
   useEffect(() => {
     if (diary && characters.length >= 3 && !isGeneratingComments) {
       setIsGeneratingComments(true);
-      
-      // 각 캐릭터별로 커멘트 생성 (순서: 루미 → 제트 → 모카)
-      const generateComments = async () => {
-        try {
-          const characterOrder = [
-            characters.find(c => c.name === '루미'), // pink
-            characters.find(c => c.name === '제트'), // blue
-            characters.find(c => c.name === '모카'), // yellow
-          ].filter((c): c is NonNullable<typeof c> => c !== undefined);
 
-          const comments = await Promise.all(
-            characterOrder.map((character) =>
-              generateCharacterComment(
-                diary.content,
-                character.name,
-                character.personality
-              )
-            )
-          );
-          setCharacterComments(comments);
-        } catch (error) {
-          console.error('커멘트 생성 중 오류:', error);
-          // 기본 메시지로 fallback (순서: 루미 → 제트 → 모카)
+      try {
+        // Backend에서 이미 생성한 AI 응답 사용
+        const aiResponses = diary.aiPersonaResponses as Array<{ message: string; persona: string }> | undefined;
+
+        if (aiResponses && Array.isArray(aiResponses) && aiResponses.length >= 3) {
+          // 캐릭터 순서에 맞게 응답 정렬: 루미 → 제트 → 모카
+          const characterOrderNames = ['gentle', 'pragmatic', 'humorous']; // Backend persona keys
+          const orderedComments = characterOrderNames
+            .map(persona => aiResponses.find(r => r.persona === persona)?.message)
+            .filter((msg): msg is string => msg !== undefined);
+
+          if (orderedComments.length >= 3) {
+            setCharacterComments(orderedComments.slice(0, 3));
+          } else {
+            // 완전한 응답이 없으면 기본 메시지 사용
+            setCharacterComments([
+              '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.', // 루미
+              '현실을 직시하고 앞으로 나아가는 당신이 멋져요.', // 제트
+              '힘든 일이 있어도 함께 웃으며 지나갈 수 있어요!', // 모카
+            ]);
+          }
+        } else {
+          // 응답이 없으면 기본 메시지 사용
           setCharacterComments([
             '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.', // 루미
             '현실을 직시하고 앞으로 나아가는 당신이 멋져요.', // 제트
             '힘든 일이 있어도 함께 웃으며 지나갈 수 있어요!', // 모카
           ]);
-        } finally {
-          setIsGeneratingComments(false);
         }
-      };
-
-      generateComments();
+      } catch (error) {
+        console.error('AI 응답 로드 중 오류:', error);
+        // 기본 메시지로 fallback (순서: 루미 → 제트 → 모카)
+        setCharacterComments([
+          '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.', // 루미
+          '현실을 직시하고 앞으로 나아가는 당신이 멋져요.', // 제트
+          '힘든 일이 있어도 함께 웃으며 지나갈 수 있어요!', // 모카
+        ]);
+      } finally {
+        setIsGeneratingComments(false);
+      }
     }
   }, [diary, characters, isGeneratingComments]);
 

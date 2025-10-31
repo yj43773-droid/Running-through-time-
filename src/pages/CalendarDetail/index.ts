@@ -1,0 +1,2 @@
+export { CalendarDetail } from './CalendarDetail';
+

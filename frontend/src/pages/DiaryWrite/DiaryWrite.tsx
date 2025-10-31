@@ -75,7 +75,10 @@ export const DiaryWrite: React.FC = () => {
       });
 
       if (diary) {
-        await addOrb(diary.id, selectedEmotion, new Date().toISOString());
+        // 로컬 시간대의 날짜를 YYYY-MM-DD 형식으로 생성 (타임존 문제 방지)
+        const now = new Date();
+        const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        await addOrb(diary.id, selectedEmotion, localDateStr);
         resetDiary();
         navigate(`/diary/complete/${diary.id}`);
       }

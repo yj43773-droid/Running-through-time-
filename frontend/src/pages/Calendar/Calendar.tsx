@@ -11,6 +11,7 @@ export const Calendar: React.FC = () => {
   const { calendarEntries, loadOrbs, orbs } = useMemoryOrbs();
   const { checkAuth, isAuthenticated } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -22,17 +23,24 @@ export const Calendar: React.FC = () => {
     }
   }, [isAuthenticated, loadOrbs]);
 
-  const handleOrbClick = (orb: MemoryOrbType) => {
+  const handleOrbClick = (orb: MemoryOrbType, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
     navigate(`/calendar/detail/${orb.diaryId}`);
   };
 
-  const handleDateClick = (date: Date) => {
-    // 날짜 클릭 시 해당 날짜의 일기 목록 보기 (선택적)
-    const dateStr = date.toISOString().split('T')[0];
-    const entry = calendarEntries.find(e => e.date.startsWith(dateStr));
-    if (entry && entry.orbs.length > 0) {
-      // 첫 번째 일기로 이동
-      navigate(`/calendar/detail/${entry.orbs[0].diaryId}`);
+  const handleDateCellClick = (day: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const orbs = getOrbsForDate(day);
+    if (orbs.length > 0) {
+      // 같은 날짜를 다시 클릭하면 닫기
+      if (expandedDay === day) {
+        setExpandedDay(null);
+      } else {
+        // 다른 날짜 클릭하면 확장
+        setExpandedDay(day);
+      }
     }
   };
 
@@ -54,8 +62,16 @@ export const Calendar: React.FC = () => {
     month === today.getMonth();
 
   const getOrbsForDate = (day: number): MemoryOrbType[] => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const entry = calendarEntries.find(e => e.date.startsWith(dateStr));
+    // 정확한 날짜 매칭: YYYY-MM-DD 형식
+    const targetDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    // calendarEntries에서 정확한 날짜와 일치하는 엔트리 찾기
+    const entry = calendarEntries.find(e => {
+      // e.date는 YYYY-MM-DD 형식이거나 ISO 형식일 수 있으므로 startsWith 대신 정확히 비교
+      const entryDateStr = e.date.split('T')[0]; // ISO 형식에서 날짜 부분만 추출
+      return entryDateStr === targetDateStr;
+    });
+    
     return entry?.orbs || [];
   };
 
@@ -86,6 +102,51 @@ export const Calendar: React.FC = () => {
     lonely: '외로움',
   };
 
+  // 선택된 달의 모든 구슬 가져오기
+  const getOrbsForSelectedMonth = (): MemoryOrbType[] => {
+    const targetYear = year;
+    const targetMonth = month + 1; // month는 0-based이므로 1을 더함
+    const monthOrbs: MemoryOrbType[] = [];
+    
+    calendarEntries.forEach(entry => {
+      // entry.date에서 날짜 부분만 추출 (YYYY-MM-DD 형식)
+      const entryDateStr = entry.date.split('T')[0];
+      const entryDate = new Date(entryDateStr + 'T00:00:00');
+      
+      // 해당 월의 구슬인지 확인
+      if (entryDate.getFullYear() === targetYear && entryDate.getMonth() + 1 === targetMonth) {
+        monthOrbs.push(...entry.orbs);
+      }
+    });
+    
+    return monthOrbs;
+  };
+
+  // 선택된 달의 감정별 구슬 개수 계산
+  const getEmotionCountsForMonth = (): Record<EmotionType, number> => {
+    const monthOrbs = getOrbsForSelectedMonth();
+    const counts: Record<EmotionType, number> = {
+      happy: 0,
+      sad: 0,
+      angry: 0,
+      anxious: 0,
+      calm: 0,
+      excited: 0,
+      grateful: 0,
+      lonely: 0,
+    };
+    
+    monthOrbs.forEach(orb => {
+      if (orb.emotion && counts.hasOwnProperty(orb.emotion)) {
+        counts[orb.emotion as EmotionType]++;
+      }
+    });
+    
+    return counts;
+  };
+
+  const emotionCounts = getEmotionCountsForMonth();
+
   return (
     <div className="mobile-container pb-20 min-h-screen bg-gradient-to-b from-amber-50 via-orange-50 to-amber-100">
       {/* Back Button - 왼쪽 위 */}
@@ -114,14 +175,16 @@ export const Calendar: React.FC = () => {
           
           <div className="text-center">
             <h2 className="text-xl font-bold text-gray-800 mb-1">{formatMonthYear(selectedMonth)}</h2>
-            {isCurrentMonth && (
-              <button
-                onClick={goToToday}
-                className="text-xs bg-purple-100 text-purple-600 px-3 py-1 rounded-full hover:bg-purple-200 transition-all"
-              >
-                오늘로 이동
-              </button>
-            )}
+            <button
+              onClick={goToToday}
+              className={`text-xs px-3 py-1 rounded-full transition-all ${
+                isCurrentMonth
+                  ? 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                  : 'bg-purple-500 text-white hover:bg-purple-600 shadow-md'
+              }`}
+            >
+              오늘로 이동
+            </button>
           </div>
 
           <motion.button
@@ -172,74 +235,127 @@ export const Calendar: React.FC = () => {
                 day === today.getDate();
               const isWeekend = date.getDay() === 0 || date.getDay() === 6;
               const hasOrbs = orbs.length > 0;
+              const isExpanded = expandedDay === day;
 
               return (
-                <motion.div
-                  key={day}
-                  className={`h-20 p-2 rounded-lg border-2 transition-all cursor-pointer relative overflow-hidden ${
-                    isToday
-                      ? 'border-purple-500 bg-purple-50 shadow-md scale-105'
-                      : hasOrbs
-                      ? 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-md'
-                      : isWeekend
-                      ? 'border-gray-200 bg-gray-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.01 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleDateClick(date)}
-                >
-                  {/* Date Number */}
-                  <div
-                    className={`text-xs font-semibold mb-1 ${
+                <React.Fragment key={day}>
+                  <motion.div
+                    className={`p-2 rounded-lg border-2 transition-all relative overflow-hidden ${
+                      isExpanded
+                        ? 'col-span-7 min-h-[200px] mb-2'
+                        : 'h-20'
+                    } ${
                       isToday
-                        ? 'text-purple-700 font-bold'
+                        ? 'border-purple-500 bg-purple-50 shadow-md'
+                        : hasOrbs
+                        ? 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-md'
                         : isWeekend
-                        ? 'text-gray-500'
-                        : 'text-gray-700'
-                    }`}
+                        ? 'border-gray-200 bg-gray-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300'
+                    } ${hasOrbs ? 'cursor-pointer' : ''}`}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: 1,
+                      height: isExpanded ? 'auto' : '80px',
+                    }}
+                    transition={{ delay: index * 0.01, duration: 0.3 }}
+                    onClick={(e) => hasOrbs && handleDateCellClick(day, e)}
+                    layout
                   >
-                    {isToday && (
-                      <span className="inline-block w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs mr-1">
-                        {day}
-                      </span>
-                    )}
-                    {!isToday && day}
-                  </div>
+                    {/* Date Number */}
+                    <div
+                      className={`text-xs font-semibold mb-1 ${
+                        isToday
+                          ? 'text-purple-700 font-bold'
+                          : isWeekend
+                          ? 'text-gray-500'
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      {isToday && (
+                        <span className="inline-block w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs mr-1">
+                          {day}
+                        </span>
+                      )}
+                      {!isToday && day}
+                    </div>
 
-                  {/* Memory Orbs */}
-                  <div className="flex flex-wrap gap-1 justify-center items-center">
-                    {orbs.slice(0, 3).map((orb) => (
-                      <motion.div
-                        key={orb.id}
-                        whileHover={{ scale: 1.2, zIndex: 10 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOrbClick(orb);
-                        }}
-                      >
-                        <MemoryOrb
-                          orb={orb}
-                          size="sm"
-                          showGlitter={orb.isReinterpreted}
-                        />
-                      </motion.div>
-                    ))}
-                    {orbs.length > 3 && (
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-[8px] font-bold shadow-sm">
-                        +{orbs.length - 3}
+                    {/* Memory Orbs - 축소 상태 */}
+                    {!isExpanded && (
+                      <div className="flex flex-wrap gap-1 justify-center items-center">
+                        {orbs.slice(0, 3).map((orb) => (
+                          <motion.div
+                            key={orb.id}
+                            whileHover={{ scale: 1.2, zIndex: 10 }}
+                            onClick={(e) => handleOrbClick(orb, e)}
+                            className="cursor-pointer"
+                          >
+                            <MemoryOrb
+                              orb={orb}
+                              size="sm"
+                              showGlitter={orb.isReinterpreted}
+                            />
+                          </motion.div>
+                        ))}
+                        {orbs.length > 3 && (
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-[8px] font-bold shadow-sm">
+                            +{orbs.length - 3}
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
 
-                  {/* Bookshelf decoration - 책장 느낌 */}
-                  {hasOrbs && (
-                    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-400 opacity-30"></div>
-                  )}
-                </motion.div>
+                    {/* Memory Orbs - 확장 상태 */}
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="mt-4"
+                      >
+                        <div className="text-center mb-4">
+                          <h4 className="text-sm font-bold text-gray-700 mb-2">
+                            {day}일의 구슬 {orbs.length}개
+                          </h4>
+                        </div>
+                        <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 justify-items-center">
+                          {orbs.map((orb, orbIndex) => (
+                            <motion.div
+                              key={orb.id}
+                              initial={{ scale: 0, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ delay: orbIndex * 0.05 }}
+                              whileHover={{ scale: 1.15, y: -5, zIndex: 10 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={(e) => handleOrbClick(orb, e)}
+                              className="cursor-pointer relative"
+                            >
+                              <MemoryOrb
+                                orb={orb}
+                                size="lg"
+                                showGlitter={orb.isReinterpreted}
+                              />
+                              {/* 호버 시 감정 라벨 */}
+                              <motion.div
+                                className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none"
+                                initial={{ opacity: 0 }}
+                                whileHover={{ opacity: 1 }}
+                              >
+                                {emotionLabels[orb.emotion]}
+                              </motion.div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Bookshelf decoration - 책장 느낌 */}
+                    {hasOrbs && !isExpanded && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-400 opacity-30"></div>
+                    )}
+                  </motion.div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -255,15 +371,20 @@ export const Calendar: React.FC = () => {
             {(Object.keys(EMOTION_COLORS) as EmotionType[]).map((emotion) => (
               <motion.div
                 key={emotion}
-                className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 whileHover={{ scale: 1.02 }}
               >
-                <div
-                  className="w-6 h-6 rounded-full shadow-sm border-2 border-white"
-                  style={{ backgroundColor: EMOTION_COLORS[emotion] }}
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {emotionLabels[emotion]}
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-full shadow-sm border-2 border-white"
+                    style={{ backgroundColor: EMOTION_COLORS[emotion] }}
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    {emotionLabels[emotion]}
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-purple-600">
+                  {emotionCounts[emotion]}개
                 </span>
               </motion.div>
             ))}
@@ -280,12 +401,13 @@ export const Calendar: React.FC = () => {
                 <div className="text-2xl font-bold text-pink-600">
                   {orbs.filter(o => o.isReinterpreted).length}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">재해석 구슬</div>
+                <div className="text-xs text-gray-600 mt-1">되새김 구슬</div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
 
     </div>
   );

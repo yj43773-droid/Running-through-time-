@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 30160 -Force\")",
+      "Bash(npm run dev:*)",
+      "Bash(dir \"C:\\Users\\yj437\\OneDrive\\Desktop\\coding\\project\\backend_express\\src\")",
+      "Bash(timeout 10 npm run dev:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,20 +1,21 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import { initializeVectorStore } from './services/vector-store.service';
 
 const dbPath = process.env.DATABASE_URL || './database.db';
 
 export const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('Database connection error:', err);
+    console.error('❌ Database connection error:', err);
   } else {
-    console.log('Connected to SQLite database');
+    console.log('✅ Connected to SQLite database');
   }
 });
 
 // Enable foreign keys
 db.run('PRAGMA foreign_keys = ON');
 
-export function initializeDatabase() {
+export async function initializeDatabase() {
   return new Promise<void>((resolve, reject) => {
     try {
       db.serialize(() => {
@@ -28,7 +29,7 @@ export function initializeDatabase() {
             createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
           )
         `, (err) => {
-          if (err && !err.message.includes('already exists')) console.error('Error creating users table:', err);
+          if (err && !err.message.includes('already exists')) console.error('❌ Error creating users table:', err);
         });
 
         // Create diaries table
@@ -53,15 +54,15 @@ export function initializeDatabase() {
             FOREIGN KEY (linkedPastDiaryId) REFERENCES diaries(id) ON DELETE SET NULL
           )
         `, (err) => {
-          if (err && !err.message.includes('already exists')) console.error('Error creating diaries table:', err);
+          if (err && !err.message.includes('already exists')) console.error('❌ Error creating diaries table:', err);
         });
 
         db.run(`CREATE INDEX IF NOT EXISTS idx_diaries_createdAt ON diaries(createdAt)`, (err) => {
-          if (err && !err.message.includes('already exists')) console.error('Error creating index:', err);
+          if (err && !err.message.includes('already exists')) console.error('❌ Error creating index:', err);
         });
 
         db.run(`CREATE INDEX IF NOT EXISTS idx_diaries_userId ON diaries(userId)`, (err) => {
-          if (err && !err.message.includes('already exists')) console.error('Error creating index:', err);
+          if (err && !err.message.includes('already exists')) console.error('❌ Error creating index:', err);
         });
 
         // Create memory_orbs table
@@ -82,10 +83,16 @@ export function initializeDatabase() {
           )
         `, (err) => {
           if (err && !err.message.includes('already exists')) {
-            console.error('Error creating memory_orbs table:', err);
+            console.error('❌ Error creating memory_orbs table:', err);
             reject(err);
           } else {
-            resolve();
+            // Initialize vector store after database is ready
+            initializeVectorStore().then(() => {
+              resolve();
+            }).catch((vectorError) => {
+              console.warn('⚠️  Vector store initialization failed, continuing anyway:', vectorError);
+              resolve();
+            });
           }
         });
       });

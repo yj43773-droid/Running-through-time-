@@ -22,25 +22,25 @@ const TANK_RADIUS = 45; // 통의 반지름 (%) - 컨테이너 기준, 살짝 �
 const ORB_RADIUS_PERCENT = 1.5; // 구슬의 반지름 (%)
 
 // 점이 원 내부에 있는지 확인하고, 원 밖이면 원의 경계로 제한 (중앙 기준)
-const constrainToCircle = (point: { x: number; y: number }) => {
-  // 중앙을 정확히 가운데로 고정
-  const centerX = TANK_CENTER_X; // 50 (가운데)
-  const centerY = TANK_CENTER_Y; // 50
-  const dx = point.x - centerX;
-  const dy = point.y - centerY;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-  
-  if (distance <= TANK_RADIUS) {
-    return point; // 원 내부에 있으면 그대로 반환
-  }
-  
-  // 원 밖에 있으면 원의 경계로 제한 (중앙 기준)
-  const angle = Math.atan2(dy, dx);
-  return {
-    x: centerX + Math.cos(angle) * TANK_RADIUS,
-    y: centerY + Math.sin(angle) * TANK_RADIUS,
-  };
-};
+// const constrainToCircle = (point: { x: number; y: number }) => {
+//   // 중앙을 정확히 가운데로 고정
+//   const centerX = TANK_CENTER_X; // 50 (가운데)
+//   const centerY = TANK_CENTER_Y; // 50
+//   const dx = point.x - centerX;
+//   const dy = point.y - centerY;
+//   const distance = Math.sqrt(dx * dx + dy * dy);
+//
+//   if (distance <= TANK_RADIUS) {
+//     return point; // 원 내부에 있으면 그대로 반환
+//   }
+//
+//   // 원 밖에 있으면 원의 경계로 제한 (중앙 기준)
+//   const angle = Math.atan2(dy, dx);
+//   return {
+//     x: centerX + Math.cos(angle) * TANK_RADIUS,
+//     y: centerY + Math.sin(angle) * TANK_RADIUS,
+//   };
+// };
 
 // 초기 위치 생성 (원형 범위 내 랜덤 생성)
 const generateInitialPositions = (count: number) => {
@@ -115,9 +115,9 @@ const generateInitialPositions = (count: number) => {
   return positions;
 };
 
-export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({ 
-  orbs, 
-  onOrbClick,
+export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({
+  orbs,
+  // onOrbClick, // Currently unused, may be used in future implementations
   machineImage,
   maxOrbsInTank = 10
 }) => {

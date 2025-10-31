@@ -5,7 +5,6 @@ import { DiaryPaper } from '@/components/DiaryPaper';
 import { Character } from '@/components/Character';
 import { useDiary } from '@/hooks/useDiary';
 import { useCharacters } from '@/hooks/useCharacters';
-import { generateCharacterComment } from '@/utils/geminiApi';
 
 export const DiaryComplete: React.FC = () => {
   const { diaryId } = useParams<{ diaryId: string }>();
@@ -30,38 +29,38 @@ export const DiaryComplete: React.FC = () => {
     }
   }, [diaryId, loadDiary, loadCharacters]);
 
-  // 일기와 캐릭터가 로드되면 Gemini API로 커멘트 생성
+  // 일기와 캐릭터가 로드되면 Backend에서 가져온 AI 응답 사용
   useEffect(() => {
     if (diary && characters.length >= 3 && !isGeneratingComments) {
       setIsGeneratingComments(true);
-      
-      // 각 캐릭터별로 커멘트 생성
-      const generateComments = async () => {
-        try {
-          const comments = await Promise.all(
-            characters.slice(0, 3).map((character) =>
-              generateCharacterComment(
-                diary.content,
-                character.name,
-                character.personality
-              )
-            )
-          );
+
+      try {
+        // Backend에서 이미 생성한 AI 응답 사용
+        const aiResponses = diary.aiPersonaResponses as Array<{ message: string }> | undefined;
+
+        if (aiResponses && Array.isArray(aiResponses) && aiResponses.length >= 3) {
+          // Backend 응답이 있으면 사용
+          const comments = aiResponses.slice(0, 3).map((response) => response.message);
           setCharacterComments(comments);
-        } catch (error) {
-          console.error('커멘트 생성 중 오류:', error);
-          // 기본 메시지로 fallback
+        } else {
+          // 응답이 없으면 기본 메시지 사용
           setCharacterComments([
             '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
             '이런 일이 있으셨군요. 함께 아파하고 있어요.',
             '앞으로도 함께 걸어가요. 당신은 충분히 용기 있어요.',
           ]);
-        } finally {
-          setIsGeneratingComments(false);
         }
-      };
-
-      generateComments();
+      } catch (error) {
+        console.error('AI 응답 로드 중 오류:', error);
+        // 기본 메시지로 fallback
+        setCharacterComments([
+          '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
+          '이런 일이 있으셨군요. 함께 아파하고 있어요.',
+          '앞으로도 함께 걸어가요. 당신은 충분히 용기 있어요.',
+        ]);
+      } finally {
+        setIsGeneratingComments(false);
+      }
     }
   }, [diary, characters, isGeneratingComments]);
 

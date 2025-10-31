@@ -193,6 +193,29 @@ export const useDiary = () => {
     setError(null);
   }, []);
 
+  const deleteDiary = useCallback(async (diaryId: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await apiFetch(`/diaries/${diaryId}`, {
+        method: 'DELETE',
+      });
+      resetDiary();
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '일기 삭제에 실패했습니다.';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [resetDiary]);
+
   return {
     diary,
     currentContent,
@@ -207,5 +230,6 @@ export const useDiary = () => {
     addPhoto,
     removePhoto,
     resetDiary,
+    deleteDiary,
   };
 };
