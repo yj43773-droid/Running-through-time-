@@ -5,6 +5,7 @@ import { DiaryPaper } from '@/components/DiaryPaper';
 import { Character } from '@/components/Character';
 import { useDiary } from '@/hooks/useDiary';
 import { useCharacters } from '@/hooks/useCharacters';
+import { generateCharacterComment } from '@/utils/geminiApi';
 
 export const DiaryComplete: React.FC = () => {
   const { diaryId } = useParams<{ diaryId: string }>();
@@ -12,6 +13,10 @@ export const DiaryComplete: React.FC = () => {
   const { diary, loadDiary, isLoading } = useDiary();
   const { characters, loadCharacters } = useCharacters();
   const [showCharacters, setShowCharacters] = useState(false);
+  const [activeCharacterIndex, setActiveCharacterIndex] = useState<number | null>(null);
+  const [characterComments, setCharacterComments] = useState<string[]>([]);
+  const [isGeneratingComments, setIsGeneratingComments] = useState(false);
+  const [spokenMessages, setSpokenMessages] = useState<Record<number, string>>({}); // 각 캐릭터가 말한 메시지 저장
 
   useEffect(() => {
     if (diaryId) {
@@ -25,6 +30,103 @@ export const DiaryComplete: React.FC = () => {
     }
   }, [diaryId, loadDiary, loadCharacters]);
 
+  // 일기와 캐릭터가 로드되면 Gemini API로 커멘트 생성
+  useEffect(() => {
+    if (diary && characters.length >= 3 && !isGeneratingComments) {
+      setIsGeneratingComments(true);
+      
+      // 각 캐릭터별로 커멘트 생성
+      const generateComments = async () => {
+        try {
+          const comments = await Promise.all(
+            characters.slice(0, 3).map((character) =>
+              generateCharacterComment(
+                diary.content,
+                character.name,
+                character.personality
+              )
+            )
+          );
+          setCharacterComments(comments);
+        } catch (error) {
+          console.error('커멘트 생성 중 오류:', error);
+          // 기본 메시지로 fallback
+          setCharacterComments([
+            '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
+            '이런 일이 있으셨군요. 함께 아파하고 있어요.',
+            '앞으로도 함께 걸어가요. 당신은 충분히 용기 있어요.',
+          ]);
+        } finally {
+          setIsGeneratingComments(false);
+        }
+      };
+
+      generateComments();
+    }
+  }, [diary, characters, isGeneratingComments]);
+
+  // 캐릭터가 순차적으로 말하도록 설정
+  useEffect(() => {
+    if (!showCharacters || !diary || characters.length < 3 || characterComments.length === 0) return;
+
+    const timeouts: number[] = [];
+
+    // 기본 메시지 (fallback)
+    const defaultMessages = [
+      '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
+      '이런 일이 있으셨군요. 함께 아파하고 있어요.',
+      '앞으로도 함께 걸어가요. 당신은 충분히 용기 있어요.',
+    ];
+    
+    const comments = characterComments.length > 0 ? characterComments : defaultMessages;
+
+    // 첫 번째 캐릭터가 말하기 시작
+    const timeout1 = setTimeout(() => {
+      setActiveCharacterIndex(0);
+      if (comments[0]) {
+        setSpokenMessages(prev => ({ ...prev, 0: comments[0] }));
+      }
+    }, 1500);
+    timeouts.push(timeout1);
+
+    // 두 번째 캐릭터가 말하기
+    const timeout2 = setTimeout(() => {
+      setActiveCharacterIndex(1);
+      if (comments[1]) {
+        setSpokenMessages(prev => ({ ...prev, 1: comments[1] }));
+      }
+    }, 4000);
+    timeouts.push(timeout2);
+
+    // 세 번째 캐릭터가 말하기
+    const timeout3 = setTimeout(() => {
+      setActiveCharacterIndex(2);
+      if (comments[2]) {
+        setSpokenMessages(prev => ({ ...prev, 2: comments[2] }));
+      }
+    }, 6500);
+    timeouts.push(timeout3);
+
+    // 모든 캐릭터가 말한 후 (말풍선은 계속 유지)
+    const timeout4 = setTimeout(() => {
+      setActiveCharacterIndex(null);
+    }, 9000);
+    timeouts.push(timeout4);
+
+    // 모든 캐릭터가 말한 후 자동으로 재해석 페이지로 이동
+    const timeout5 = setTimeout(() => {
+      if (diaryId) {
+        navigate(`/reinterpret/${diaryId}`);
+      }
+    }, 10000);
+    timeouts.push(timeout5);
+
+    // Cleanup function
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [showCharacters, diary, characters, diaryId, navigate, characterComments]);
+
   if (isLoading || !diary) {
     return (
       <div className="mobile-container flex items-center justify-center min-h-screen">
@@ -33,14 +135,42 @@ export const DiaryComplete: React.FC = () => {
     );
   }
 
-  const empatheticComments = [
-    '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
-    '이런 일이 있으셨군요. 함께 아파하고 있어요.',
-    '당신의 마음을 들려주셔서 감사합니다. 함께 해요.',
-  ];
+  // 생성된 커멘트가 있으면 사용, 없으면 기본 메시지
+  const empatheticComments =
+    characterComments.length > 0
+      ? characterComments
+      : [
+          '오늘 하루 정말 수고하셨어요. 당신의 감정을 이해합니다.',
+          '이런 일이 있으셨군요. 함께 아파하고 있어요.',
+          '앞으로도 함께 걸어가요. 당신은 충분히 용기 있어요.',
+        ];
 
   return (
-    <div className="mobile-container min-h-screen bg-gradient-to-b from-amber-50 to-amber-100 p-6">
+    <div className="mobile-container min-h-screen bg-gradient-to-b from-purple-100 to-pink-100 p-6">
+      {/* Home Icon - 일기 종이 위, 왼쪽 위에 배치 */}
+      <div className="mb-4 flex justify-start">
+        <button
+          onClick={() => navigate('/home')}
+          className="w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+        >
+          {/* 회색 집 아이콘 SVG */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 text-gray-600"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+            />
+          </svg>
+        </button>
+      </div>
+
       {/* Diary Paper */}
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -51,34 +181,25 @@ export const DiaryComplete: React.FC = () => {
       </motion.div>
 
       {/* AI Characters */}
-      <div className="mt-8 flex flex-wrap justify-center gap-6">
-        {characters.slice(0, 3).map((character, index) => (
-          <Character
-            key={character.id}
-            character={character}
-            message={empatheticComments[index] || '소중한 하루였네요.'}
-            isVisible={showCharacters}
-            slideDirection={index % 2 === 0 ? 'left' : 'right'}
-            delay={index * 0.2}
-          />
-        ))}
+      <div className="mt-8 flex flex-wrap justify-center gap-8">
+        {characters.slice(0, 3).map((character, index) => {
+          const isSpeaking = activeCharacterIndex === index;
+          // 말한 메시지가 있으면 계속 표시, 없으면 현재 말하고 있을 때만 표시
+          const messageToShow = spokenMessages[index] || (isSpeaking ? (empatheticComments[index] || '소중한 하루였네요.') : undefined);
+          return (
+            <Character
+              key={character.id}
+              character={character}
+              message={messageToShow}
+              isVisible={showCharacters}
+              slideDirection={index % 2 === 0 ? 'left' : 'right'}
+              delay={index * 0.2}
+              isSpeaking={isSpeaking}
+            />
+          );
+        })}
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-8 space-y-3">
-        <button
-          onClick={() => navigate('/home')}
-          className="w-full py-3 bg-purple-500 text-white rounded-xl font-semibold active:bg-purple-600"
-        >
-          홈으로 가기
-        </button>
-        <button
-          onClick={() => navigate(`/reinterpret/${diaryId}`)}
-          className="w-full py-3 bg-pink-500 text-white rounded-xl font-semibold active:bg-pink-600"
-        >
-          과거 일기 다시 해석하기
-        </button>
-      </div>
     </div>
   );
 };

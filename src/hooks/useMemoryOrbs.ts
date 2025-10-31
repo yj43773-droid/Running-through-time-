@@ -1,5 +1,33 @@
 import { useState, useCallback, useMemo } from 'react';
-import { MemoryOrb, EmotionType, CalendarEntry } from '@/types';
+import { MemoryOrb, EmotionType, CalendarEntry, ReinterpretationReply } from '@/types';
+import { apiFetch, ApiError } from '@/lib/apiClient';
+
+interface MemoryOrbApiResponse {
+  id: string;
+  diaryId: string;
+  userId: string;
+  emotion: string;
+  date: string;
+  isReinterpreted?: boolean;
+  reinterpretationNote?: string | null;
+  reinterpretationReplies?: ReinterpretationReply[] | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const normalizeOrb = (payload: MemoryOrbApiResponse): MemoryOrb => {
+  const emotion = (payload.emotion ?? 'happy') as EmotionType;
+  return {
+    id: payload.id,
+    diaryId: payload.diaryId,
+    date: payload.date,
+    emotion,
+    isReinterpreted: Boolean(payload.isReinterpreted),
+    reinterpretationNote: payload.reinterpretationNote ?? undefined,
+    reinterpretationReplies: payload.reinterpretationReplies ?? undefined,
+    glitterEffect: false,
+  };
+};
 
 export const useMemoryOrbs = () => {
   const [orbs, setOrbs] = useState<MemoryOrb[]>([]);
@@ -10,104 +38,17 @@ export const useMemoryOrbs = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/memory-orbs');
-      // const data = await response.json();
-      // setOrbs(data);
-      
-      // 예시 데이터 - 테스트용
-      const today = new Date();
-      const mockOrbs: MemoryOrb[] = [
-        // 재해석된 구슬 (오늘)
-        {
-          id: 'orb-1',
-          diaryId: 'diary-1',
-          date: today.toISOString(),
-          emotion: 'happy',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        // 재해석된 구슬 (어제)
-        {
-          id: 'orb-2',
-          diaryId: 'diary-2',
-          date: new Date(today.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'grateful',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        // 재해석되지 않은 구슬 (3일 전)
-        {
-          id: 'orb-3',
-          diaryId: 'diary-3',
-          date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'calm',
-          isReinterpreted: false,
-        },
-        // 재해석된 구슬 (5일 전)
-        {
-          id: 'orb-4',
-          diaryId: 'diary-4',
-          date: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'excited',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        // 재해석되지 않은 구슬 (7일 전)
-        {
-          id: 'orb-5',
-          diaryId: 'diary-5',
-          date: new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'sad',
-          isReinterpreted: false,
-        },
-        // 같은 날짜에 여러 구슬 (10일 전)
-        {
-          id: 'orb-6',
-          diaryId: 'diary-6',
-          date: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'happy',
-          isReinterpreted: false,
-        },
-        {
-          id: 'orb-7',
-          diaryId: 'diary-7',
-          date: new Date(today.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'grateful',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        // 재해석된 구슬 (12일 전)
-        {
-          id: 'orb-8',
-          diaryId: 'diary-8',
-          date: new Date(today.getTime() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'calm',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-        // 재해석되지 않은 구슬 (15일 전)
-        {
-          id: 'orb-9',
-          diaryId: 'diary-9',
-          date: new Date(today.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'anxious',
-          isReinterpreted: false,
-        },
-        // 재해석된 구슬 (20일 전)
-        {
-          id: 'orb-10',
-          diaryId: 'diary-10',
-          date: new Date(today.getTime() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-          emotion: 'excited',
-          isReinterpreted: true,
-          glitterEffect: true,
-        },
-      ];
-      
-      setOrbs(mockOrbs);
+      const response = await apiFetch<{ items: MemoryOrbApiResponse[] }>('/orbs');
+      const mapped = response.items.map(normalizeOrb);
+      setOrbs(mapped);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load memory orbs');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬을 불러오지 못했습니다.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -117,39 +58,56 @@ export const useMemoryOrbs = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
-      const newOrb: MemoryOrb = {
-        id: Date.now().toString(),
-        diaryId,
-        date,
-        emotion,
-        isReinterpreted: false,
-      };
-      
+      const response = await apiFetch<MemoryOrbApiResponse>('/orbs', {
+        method: 'POST',
+        body: { diaryId, emotion, date },
+      });
+      const newOrb = normalizeOrb(response);
       setOrbs(prev => [...prev, newOrb]);
       return newOrb;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add memory orb');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬 생성에 실패했습니다.';
+      setError(message);
       throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const markAsReinterpreted = useCallback(async (orbId: string) => {
+  const markAsReinterpreted = useCallback(async (orbId: string, reinterpretationNote?: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Replace with actual API call
+      const response = await apiFetch<MemoryOrbApiResponse>(`/orbs/${orbId}/reinterpret`, {
+        method: 'POST',
+        body: reinterpretationNote ? { reinterpretationNote } : {},
+      });
+      const updatedOrb = normalizeOrb(response);
       setOrbs(prev =>
         prev.map(orb =>
           orb.id === orbId
-            ? { ...orb, isReinterpreted: true, glitterEffect: true }
+            ? {
+                ...orb,
+                ...updatedOrb,
+                glitterEffect: true,
+              }
             : orb
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update memory orb');
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : '메모리 구슬 업데이트에 실패했습니다.';
+      setError(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -214,4 +172,3 @@ export const useMemoryOrbs = () => {
     orbStats,
   };
 };
-
