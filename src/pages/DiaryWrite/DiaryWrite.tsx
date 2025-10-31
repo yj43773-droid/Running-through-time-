@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDiary } from '@/hooks/useDiary';
-import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { EmotionType } from '@/types';
 
 export const DiaryWrite: React.FC = () => {
@@ -14,10 +13,8 @@ export const DiaryWrite: React.FC = () => {
     setCurrentFont,
     addPhoto,
     removePhoto,
-    saveDiary,
     resetDiary,
   } = useDiary();
-  const { addOrb } = useMemoryOrbs();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedEmotion, setSelectedEmotion] = useState<EmotionType>('happy');
 
@@ -67,18 +64,28 @@ export const DiaryWrite: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const diary = await saveDiary({
+      // 임시로 일기 ID 생성 (저장 없이 바로 complete 페이지로 이동)
+      const tempDiaryId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // 로컬 스토리지에 임시로 저장 (complete 페이지에서 불러오기 위해)
+      const tempDiary = {
+        id: tempDiaryId,
+        userId: 'local_user',
         content: currentContent,
         photos: currentPhotos,
         font: currentFont,
         emotion: selectedEmotion,
-      });
-
-      if (diary) {
-        await addOrb(diary.id, selectedEmotion, new Date().toISOString());
-        resetDiary();
-        navigate(`/diary/complete/${diary.id}`);
-      }
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        date: new Date().toISOString(),
+      };
+      
+      const storedDiaries = JSON.parse(localStorage.getItem('diaries') || '[]');
+      storedDiaries.push(tempDiary);
+      localStorage.setItem('diaries', JSON.stringify(storedDiaries));
+      
+      resetDiary();
+      navigate(`/diary/complete/${tempDiaryId}`);
     } catch (error) {
       alert('일기 저장에 실패했습니다.');
     } finally {
