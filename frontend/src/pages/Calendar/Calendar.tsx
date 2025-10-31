@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MemoryOrb } from '@/components/MemoryOrb';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
@@ -8,6 +8,7 @@ import { MemoryOrb as MemoryOrbType, EMOTION_COLORS, EmotionType } from '@/types
 
 export const Calendar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { calendarEntries, loadOrbs, orbs } = useMemoryOrbs();
   const { checkAuth, isAuthenticated } = useAuth();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -22,6 +23,39 @@ export const Calendar: React.FC = () => {
       loadOrbs();
     }
   }, [isAuthenticated, loadOrbs]);
+
+  // 페이지가 다시 활성화될 때 구슬 목록 새로고침 (다시빛으로 변경된 구슬 반영)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && location.pathname === '/calendar') {
+        loadOrbs();
+      }
+    };
+
+    const handleFocus = () => {
+      if (location.pathname === '/calendar') {
+        loadOrbs();
+      }
+    };
+
+    // 페이지가 보일 때와 포커스될 때 새로고침
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isAuthenticated, loadOrbs, location.pathname]);
+
+  // 캘린더 페이지로 이동할 때마다 구슬 목록 새로고침
+  useEffect(() => {
+    if (isAuthenticated && location.pathname === '/calendar') {
+      loadOrbs();
+    }
+  }, [location.pathname, isAuthenticated, loadOrbs]);
 
   const handleOrbClick = (orb: MemoryOrbType, e?: React.MouseEvent) => {
     if (e) {
@@ -401,7 +435,7 @@ export const Calendar: React.FC = () => {
                 <div className="text-2xl font-bold text-pink-600">
                   {orbs.filter(o => o.isReinterpreted).length}
                 </div>
-                <div className="text-xs text-gray-600 mt-1">되새김 구슬</div>
+                <div className="text-xs text-gray-600 mt-1">다시빛 구슬</div>
               </div>
             </div>
           </div>

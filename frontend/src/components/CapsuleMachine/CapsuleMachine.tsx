@@ -210,22 +210,6 @@ export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({
         })}
       </div>
 
-      {/* 통 밖의 구슬 표시 영역 (기존 영역 - 선택적) */}
-      {remainingOrbs.length > 0 && (
-        <div className="absolute top-4 right-4 z-20">
-          <div className="relative">
-            <motion.div
-              className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold shadow-lg"
-              whileHover={{ scale: 1.1 }}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              +{remainingOrbs.length}
-            </motion.div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -199,7 +199,7 @@ export const CalendarDetail: React.FC = () => {
           </div>
         ) : (
           <div className="text-center text-gray-500 py-8">
-            아직 되새김 응답이 없습니다.
+            아직 다시빛 응답이 없습니다.
           </div>
         )}
       </motion.div>

@@ -57,6 +57,7 @@ export async function addDiaryToVectorStore(diary: Diary): Promise<void> {
 export async function searchSimilarDiaries(
   diaryContent: string,
   userId: string,
+  excludeDiaryId?: string,
   limit: number = 3
 ): Promise<any[]> {
   try {
@@ -66,7 +67,8 @@ export async function searchSimilarDiaries(
     const contentWords = diaryContent.toLowerCase().split(/\s+/);
 
     for (const [, diary] of diaryCache) {
-      if (diary.userId !== userId || diary.id === diaryContent) continue;
+      // Exclude if different user, or if it's the diary we're searching from
+      if (diary.userId !== userId || (excludeDiaryId && diary.id === excludeDiaryId)) continue;
 
       const diaryWords = diary.text.toLowerCase().split(/\s+/);
       const matchCount = contentWords.filter((w) => diaryWords.includes(w)).length;
@@ -122,4 +124,21 @@ export function getVectorStoreStats() {
   return {
     totalDiaries: diaryCache.size,
   };
+}
+
+/**
+ * Load all existing diaries into vector store
+ */
+export async function loadAllDiariesToVectorStore(
+  getAllDiaries: () => Promise<Diary[]>
+): Promise<void> {
+  try {
+    const diaries = await getAllDiaries();
+    for (const diary of diaries) {
+      await addDiaryToVectorStore(diary);
+    }
+    console.log(`✅ Loaded ${diaries.length} existing diaries into vector store`);
+  } catch (error) {
+    console.error('Error loading diaries into vector store:', error);
+  }
 }

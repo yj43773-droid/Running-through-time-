@@ -1,6 +1,7 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import { initializeVectorStore } from './services/vector-store.service';
+import { initializeVectorStore, addDiaryToVectorStore } from './services/vector-store.service';
+import { Diary } from './types';
 
 const dbPath = process.env.DATABASE_URL || './database.db';
 
@@ -87,7 +88,35 @@ export async function initializeDatabase() {
             reject(err);
           } else {
             // Initialize vector store after database is ready
-            initializeVectorStore().then(() => {
+            initializeVectorStore().then(async () => {
+              // Load existing diaries into vector store
+              try {
+                // Get all diaries from database (limit to 1000 to avoid memory issues)
+                const allDiaries: Diary[] = await new Promise((resolve, reject) => {
+                  db.all('SELECT * FROM diaries', [], (err, rows) => {
+                    if (err) reject(err);
+                    else {
+                      const diaries = (rows || []).map((row: any) => ({
+                        ...row,
+                        isEvolved: Boolean(row.isEvolved),
+                        aiPersonaResponses: row.aiPersonaResponses ? JSON.parse(row.aiPersonaResponses) : undefined,
+                        similarDiaryRefs: row.similarDiaryRefs ? JSON.parse(row.similarDiaryRefs) : undefined,
+                      }));
+                      resolve(diaries);
+                    }
+                  });
+                });
+                
+                // Load into vector store
+                for (const diary of allDiaries) {
+                  await addDiaryToVectorStore(diary);
+                }
+                if (allDiaries.length > 0) {
+                  console.log(`✅ Loaded ${allDiaries.length} existing diaries into vector store`);
+                }
+              } catch (loadError) {
+                console.warn('⚠️  Failed to load existing diaries into vector store:', loadError);
+              }
               resolve();
             }).catch((vectorError) => {
               console.warn('⚠️  Vector store initialization failed, continuing anyway:', vectorError);

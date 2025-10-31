@@ -64,6 +64,24 @@ export async function listDiaries(
   return diaries.map(deserializeDiary);
 }
 
+export async function getRandomDiary(
+  userId: string,
+  excludeId?: string
+): Promise<Diary | null> {
+  let sql = 'SELECT * FROM diaries WHERE userId = ?';
+  const params: any[] = [userId];
+
+  if (excludeId) {
+    sql += ' AND id != ?';
+    params.push(excludeId);
+  }
+
+  sql += ' ORDER BY RANDOM() LIMIT 1';
+
+  const diary = await getAsync<Diary>(sql, params);
+  return diary ? deserializeDiary(diary) : null;
+}
+
 export async function createDiary(
   userId: string,
   text: string,

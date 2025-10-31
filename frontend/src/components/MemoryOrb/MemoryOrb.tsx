@@ -34,7 +34,7 @@ export const MemoryOrb: React.FC<MemoryOrbProps> = ({
       animate={{ scale: 1, opacity: 1 }}
     >
       {/* Glitter effect for reinterpreted orbs */}
-      {showGlitter && orb.isReinterpreted && (
+      {(showGlitter || orb.isReinterpreted) && (
         <motion.div
           className="absolute inset-0 rounded-full"
           animate={{

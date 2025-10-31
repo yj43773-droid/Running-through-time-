@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware';
 import * as diaryService from '../services/diary.service';
 import * as aiService from '../services/ai.service';
+import { searchSimilarDiaries, addDiaryToVectorStore } from '../services/vector-store.service';
 
 const router = Router();
 
@@ -68,6 +69,12 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     });
 
     const updated = await diaryService.getDiary(diary.id);
+    
+    // Add to vector store for similarity search
+    if (updated) {
+      await addDiaryToVectorStore(updated);
+    }
+    
     const serialized = await diaryService.serializeDiary(updated!);
 
     return res.status(201).json(serialized);
@@ -174,6 +181,46 @@ router.post('/:diaryId/refresh-ai', authenticate, async (req: Request, res: Resp
 
     const updated = await diaryService.getDiary(diary.id);
     const serialized = await diaryService.serializeDiary(updated!);
+    return res.json(serialized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get similar diary for reinterpretation (fallback to random if no similar found)
+router.get('/:diaryId/similar', authenticate, async (req: Request, res: Response) => {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    // Make sure current diary is in vector store
+    await addDiaryToVectorStore(diary);
+
+    // Try to search for similar diary
+    let similarDiary = null;
+    const similarDiaries = await searchSimilarDiaries(diary.text, diary.userId, diary.id, 1);
+
+    if (similarDiaries.length > 0) {
+      // Get the full diary data for similar diary
+      const similarDiaryId = similarDiaries[0].id;
+      similarDiary = await diaryService.getDiary(similarDiaryId);
+    }
+
+    // If no similar diary found, get a random one as fallback
+    if (!similarDiary) {
+      console.log('No similar diary found, using random diary as fallback');
+      similarDiary = await diaryService.getRandomDiary(diary.userId, diary.id);
+    }
+
+    if (!similarDiary) {
+      return res.status(404).json({ error: 'No diary found for reinterpretation' });
+    }
+
+    const serialized = await diaryService.serializeDiary(similarDiary);
     return res.json(serialized);
   } catch (err) {
     console.error(err);
