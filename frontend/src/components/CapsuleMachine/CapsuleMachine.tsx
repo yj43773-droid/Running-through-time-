@@ -139,7 +139,7 @@ export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({
 
   return (
     <div className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-b from-purple-100 to-pink-100" 
-         style={{ height: '65vh', minHeight: '380px', maxHeight: '550px' }}>
+         style={{ height: '52vh', minHeight: '380px', maxHeight: '550px' }}>
       {/* 캡슐 머신 이미지 배경 */}
       {machineImage ? (
         <motion.img
@@ -175,7 +175,12 @@ export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({
       {/* 통 안의 구슬들 (Tank Area) - 중앙의 투명한 구형 통 부분 */}
       <div 
         ref={tankRef}
-        className="absolute bottom-[25%] left-1/2 transform -translate-x-1/2 w-1/2 h-[37%] pointer-events-none z-10 overflow-visible"
+        className="absolute left-1/2 transform -translate-x-1/2 pointer-events-none z-10 overflow-visible"
+        style={{
+          width: '45%',
+          top: 'clamp(calc(100% - 500px + 500px * 0.18), calc(100% - 60vh + 60vh * 0.18), calc(100% - 300px + 300px * 0.18))',
+          height: 'clamp(100px, calc(60vh * 0.33), 170px)',
+        }}
       >
         {orbsInTank.length > 0 && orbsInTank.map((orb, index) => {
           const position = initialPositions[index] || { x: 50, y: 50 };
