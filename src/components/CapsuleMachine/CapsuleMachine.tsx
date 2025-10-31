@@ -17,11 +17,16 @@ const TANK_CENTER_X = 50; // 통의 중심 X 좌표 (%) - 컨테이너 기준 (�
 const TANK_CENTER_Y = 50; // 통의 중심 Y 좌표 (%) - 컨테이너 기준 (정확히 중앙)
 const TANK_RADIUS = 45; // 통의 반지름 (%) - 컨테이너 기준, 살짝 줄임
 
+// 구슬의 크기 (md 사이즈 기준, w-12 h-12 = 48px)
+// 컨테이너가 보통 약 200-300px 정도라고 가정하면, 구슬 크기는 약 2-3% 정도
+// 안전 마진을 위해 구슬 반지름을 약 1.5%로 설정 (구슬 전체가 원 안에 들어가도록)
+const ORB_RADIUS_PERCENT = 1.5; // 구슬의 반지름 (%)
+
 // 점이 원 내부에 있는지 확인하고, 원 밖이면 원의 경계로 제한 (중앙 기준)
 const constrainToCircle = (point: { x: number; y: number }) => {
-  // 중앙을 정확히 50%로 고정
-  const centerX = 50; // 항상 중앙
-  const centerY = 50; // 항상 중앙
+  // 중앙을 정확히 가운데로 고정
+  const centerX = TANK_CENTER_X; // 50 (가운데)
+  const centerY = TANK_CENTER_Y; // 50
   const dx = point.x - centerX;
   const dy = point.y - centerY;
   const distance = Math.sqrt(dx * dx + dy * dy);
@@ -38,70 +43,71 @@ const constrainToCircle = (point: { x: number; y: number }) => {
   };
 };
 
-// 초기 위치 생성 (구슬 간격을 넓게, 원형 범위 내, 하단에 많이 배치)
+// 초기 위치 생성 (원형 범위 내 랜덤 생성)
 const generateInitialPositions = (count: number) => {
   const positions: Array<{ x: number; y: number }> = [];
   const displayCount = Math.min(count, 10);
+  const centerX = TANK_CENTER_X; // 50 (가운데)
+  const centerY = TANK_CENTER_Y; // 50 (가운데)
 
   for (let i = 0; i < displayCount; i++) {
-    // Y축은 아래쪽에 많이 배치
-    const yBias = Math.pow(i / displayCount, 0.5); // 제곱근 분포로 아래쪽에 더 많이
+    // 원 내부에 랜덤하게 위치 생성 (구슬 전체가 빨간 원형 경계선 안에만 존재)
+    // X 좌표를 먼저 균등하게 분산 (좌우 대칭)
+    // -1 ~ 1 범위로 균등하게 분산 (중앙 기준 대칭)
+    const normalizedX = (Math.random() - 0.5) * 2; // -1 ~ 1 범위
+    const xOffset = normalizedX * 0.9; // -0.9 ~ 0.9 (약간의 여유를 둠)
     
-    // X축은 원형 범위 내에서 균등하게 분산 (정확히 중앙 50% 기준으로 좌우 대칭)
-    const centerX = 50; // 컨테이너 기준 정확히 중앙
-    const maxXOffset = TANK_RADIUS * 0.85; // 반지름의 85% 범위 사용
+    // 반지름: 하단 부분에 많이 배치 (70% ~ 95% 범위)
+    const radiusRatio = Math.sqrt(Math.random()); // 0 ~ 1 (제곱근 분포)
+    const adjustedRadiusRatio = 0.7 + radiusRatio * 0.25; // 0.7 ~ 0.95 (원 경계 근처에 배치)
     
-    // i를 -1 ~ 1 범위로 균등하게 매핑 (좌우 대칭)
-    let normalizedPos: number;
-    if (displayCount === 1) {
-      normalizedPos = 0; // 중앙
-    } else {
-      normalizedPos = (i / (displayCount - 1)) * 2 - 1; // -1 ~ 1
+    // 구슬 전체가 원 안에 들어가도록 안전 거리 계산
+    const maxSafeDistance = TANK_RADIUS - ORB_RADIUS_PERCENT; // 구슬이 원 밖으로 나가지 않는 최대 거리
+    const maxDistance = maxSafeDistance * adjustedRadiusRatio; // 최대 거리
+    
+    // X 좌표에서 원의 하단 경계까지의 Y 거리 계산 (피타고라스)
+    const absXOffset = Math.abs(xOffset);
+    const maxYDistance = Math.sqrt(1 - absXOffset * absXOffset); // 0 ~ 1 범위
+    
+    // 하단 부분에 배치 (Y를 아래쪽으로)
+    const yDistance = maxYDistance * maxDistance; // 하단 경계까지의 거리
+    const yOffset = yDistance * 0.9; // 하단 경계 근처에 배치 (90% 위치)
+    
+    // 원 내부 위치 계산 (X는 균등 분산, Y는 하단 부분)
+    const x = centerX + xOffset * maxDistance;
+    const y = centerY + yOffset; // 아래쪽 방향
+    
+    // 구슬 전체가 원 안에 있는지 최종 확인 및 강제 제한
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const calculatedDistance = Math.sqrt(dx * dx + dy * dy);
+    
+    // 구슬의 중심점이 원 경계에서 구슬 반지름만큼 안쪽에 있는지 확인
+    const maxAllowedDistance = TANK_RADIUS - ORB_RADIUS_PERCENT;
+    let constrained = { x, y };
+    if (calculatedDistance > maxAllowedDistance) {
+      // 구슬 전체가 원 안에 들어가도록 안전 거리로 강제 이동
+      const safeDistance = maxAllowedDistance * 0.95; // 여유를 두고 95% 위치로
+      const angle2 = Math.atan2(dy, dx);
+      constrained = {
+        x: centerX + Math.cos(angle2) * safeDistance,
+        y: centerY + Math.sin(angle2) * safeDistance,
+      };
     }
     
-    const xOffset = normalizedPos * maxXOffset; // 중앙 기준 대칭 오프셋
-    const xPercent = centerX + xOffset; // 중앙(50%) 기준으로 대칭 분산
-    
-    // X 위치가 원의 범위 내에 있는지 확인하고 제한
-    const minX = centerX - TANK_RADIUS;
-    const maxX = centerX + TANK_RADIUS;
-    const constrainedX = Math.max(minX, Math.min(maxX, xPercent));
-    
-    // 이 X 위치에서 원의 경계까지의 거리를 계산 (원 내부인지 확인)
-    const dx = (constrainedX - centerX) / TANK_RADIUS; // -1 ~ 1 범위
-    const absDx = Math.abs(dx);
-    
-    // X 위치가 원의 범위를 넘지 않도록 확인
-    if (absDx > 1) {
-      // X가 원 밖에 있으면 원의 경계로 제한
-      const sign = dx >= 0 ? 1 : -1;
-      const finalX = centerX + sign * TANK_RADIUS;
-      
-      // 원의 하단에 Y 위치 설정
-      const maxDy = 0; // 원의 좌우 끝에서는 Y 거리가 0
-      const bottomBoundaryY = TANK_CENTER_Y + maxDy * TANK_RADIUS;
-      const distanceFromBoundary = (0.7 + yBias * 0.25) * TANK_RADIUS * 0.3;
-      const finalY = bottomBoundaryY - distanceFromBoundary;
-      
-      positions.push({ x: finalX, y: finalY });
-      continue;
-    }
-    
-    // 이 X 위치에서 원의 경계까지의 Y 거리 (피타고라스: r² = dx² + dy²)
-    const maxDy = Math.sqrt(1 - dx * dx); // 0 ~ 1 범위
-    
-    // 원의 하단 경계 Y = TANK_CENTER_Y + maxDy * TANK_RADIUS
-    // 원 내부 하단 부분에 배치: 경계에서 위로 올라가는 정도를 yBias로 조절
-    const bottomBoundaryY = TANK_CENTER_Y + maxDy * TANK_RADIUS;
-    const distanceFromBoundary = (0.7 + yBias * 0.25) * TANK_RADIUS * 0.3; // 경계에서 위로 최대 30% 반지름만큼
-    const finalY = bottomBoundaryY - distanceFromBoundary;
-    
-    // 최종 위치를 원 내부로 제한 (중앙 정렬 유지)
-    const constrained = constrainToCircle({ x: constrainedX, y: finalY });
+    // 최종 검증: 거리 계산
+    const finalDx = constrained.x - centerX;
+    const finalDy = constrained.y - centerY;
+    const finalDistance = Math.sqrt(finalDx * finalDx + finalDy * finalDy);
     
     // 디버깅: 첫 번째와 마지막 구슬 위치 확인
     if (i === 0 || i === displayCount - 1) {
-      console.log(`구슬 ${i}: x=${constrained.x.toFixed(2)}, y=${constrained.y.toFixed(2)}, dx=${dx.toFixed(2)}, maxDy=${maxDy.toFixed(2)}`);
+      console.log(`구슬 ${i}: x=${constrained.x.toFixed(2)}, y=${constrained.y.toFixed(2)}, 거리=${finalDistance.toFixed(2)}/${TANK_RADIUS}`);
+    }
+    
+    // 원 밖에 있으면 오류 (이것은 발생하지 않아야 함)
+    if (finalDistance > TANK_RADIUS + 0.1) {
+      console.error(`구슬 ${i}가 원 밖에 있습니다! 거리: ${finalDistance.toFixed(2)}, 반지름: ${TANK_RADIUS}`);
     }
     
     positions.push(constrained);
@@ -172,20 +178,6 @@ export const CapsuleMachine: React.FC<CapsuleMachineProps> = ({
         ref={tankRef}
         className="absolute top-[28%] left-1/2 transform -translate-x-1/2 -translate-y-1/4 w-1/2 h-[37%] pointer-events-none z-10 overflow-visible"
       >
-        {/* 구슬 존재 가능 영역 표시 (디버깅용 원형 경계선) */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left: `${TANK_CENTER_X}%`,
-            top: `${TANK_CENTER_Y}%`,
-            width: `${TANK_RADIUS * 2}%`,
-            height: `${TANK_RADIUS * 2}%`,
-            transform: 'translate(-50%, -50%)',
-            border: '2px solid red',
-            borderRadius: '50%',
-            boxSizing: 'border-box',
-          }}
-        />
         {orbsInTank.length > 0 && orbsInTank.map((orb, index) => {
           const position = initialPositions[index] || { x: 50, y: 50 };
           

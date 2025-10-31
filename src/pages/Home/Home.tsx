@@ -60,7 +60,7 @@ export const Home: React.FC = () => {
       </main>
 
       {/* User Greeting - Bottom */}
-      <div className="fixed bottom-20 left-0 right-0 z-30 pointer-events-none">
+      <div className="fixed bottom-32 left-0 right-0 z-30 pointer-events-none">
         <div className="w-full max-w-md mx-auto px-4">
           <motion.div
             className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-2xl shadow-lg pointer-events-auto"
