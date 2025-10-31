@@ -15,8 +15,48 @@ export const useMemoryOrbs = () => {
       // const data = await response.json();
       // setOrbs(data);
       
-      // Placeholder - return empty array for now
-      setOrbs([]);
+      // Mock data - 5 memory orbs for development
+      const mockOrbs: MemoryOrb[] = [
+        {
+          id: '1',
+          diaryId: 'diary-1',
+          date: new Date().toISOString(),
+          emotion: 'happy',
+          isReinterpreted: false,
+        },
+        {
+          id: '2',
+          diaryId: 'diary-2',
+          date: new Date(Date.now() - 86400000).toISOString(), // yesterday
+          emotion: 'calm',
+          isReinterpreted: true,
+          glitterEffect: true,
+        },
+        {
+          id: '3',
+          diaryId: 'diary-3',
+          date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          emotion: 'excited',
+          isReinterpreted: false,
+        },
+        {
+          id: '4',
+          diaryId: 'diary-4',
+          date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+          emotion: 'grateful',
+          isReinterpreted: false,
+        },
+        {
+          id: '5',
+          diaryId: 'diary-5',
+          date: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
+          emotion: 'sad',
+          isReinterpreted: true,
+          glitterEffect: true,
+        },
+      ];
+      
+      setOrbs(mockOrbs);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load memory orbs');
     } finally {
