@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDiary } from '@/hooks/useDiary';
-import { EmotionType } from '@/types';
+import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
+import { EMOTION_COLORS, EmotionType } from '@/types';
 
 export const DiaryWrite: React.FC = () => {
   const navigate = useNavigate();

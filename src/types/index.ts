@@ -19,15 +19,16 @@ export type EmotionType =
   | 'lonely';
 
 // Emotion color mapping
+// 백엔드 app/services/emotions.py의 EMOTION_COLOR_MAP을 기반으로 매핑
 export const EMOTION_COLORS: Record<EmotionType, string> = {
-  happy: '#FFD93D',
-  sad: '#6BCAE2',
-  angry: '#FF6B6B',
-  anxious: '#A8DADC',
-  calm: '#95E1D3',
-  excited: '#FF9F66',
-  grateful: '#FFD3A5',
-  lonely: '#B19CD9',
+  happy: '#FFD166',      // joy/happiness/기쁨/행복
+  sad: '#118AB2',        // sadness/슬픔
+  angry: '#EF476F',      // anger/rage/분노/화남
+  anxious: '#073B4C',    // anxiety/불안
+  calm: '#9BC53D',       // calm/serenity/평온/차분
+  excited: '#8338EC',    // surprise/놀람
+  grateful: '#FF758F',   // love/사랑
+  lonely: '#B19CD9',     // 백엔드에 없음, 기존 색상 유지
 };
 
 // Memory Orb types

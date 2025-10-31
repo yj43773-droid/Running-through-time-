@@ -27,11 +27,11 @@ export const Calendar: React.FC = () => {
   };
 
   const handleDateClick = (date: Date) => {
-    // 날짜 클릭 시 해당 날짜의 일기 목록 보기 (선택적)
+    // 날짜 클릭 시 해당 날짜의 일기 상세 보기
     const dateStr = date.toISOString().split('T')[0];
     const entry = calendarEntries.find(e => e.date.startsWith(dateStr));
     if (entry && entry.orbs.length > 0) {
-      // 첫 번째 일기로 이동
+      // 하루에 1개의 일기만 있으므로 첫 번째 일기로 이동
       navigate(`/calendar/detail/${entry.orbs[0].diaryId}`);
     }
   };
@@ -53,10 +53,11 @@ export const Calendar: React.FC = () => {
     year === today.getFullYear() && 
     month === today.getMonth();
 
-  const getOrbsForDate = (day: number): MemoryOrbType[] => {
+  const getOrbForDate = (day: number): MemoryOrbType | null => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const entry = calendarEntries.find(e => e.date.startsWith(dateStr));
-    return entry?.orbs || [];
+    // 하루에 1개의 일기만 있으므로 첫 번째 구슬만 반환
+    return entry?.orbs?.[0] || null;
   };
 
   const formatMonthYear = (date: Date) => {
@@ -166,12 +167,12 @@ export const Calendar: React.FC = () => {
             {Array.from({ length: daysInMonth }).map((_, index) => {
               const day = index + 1;
               const date = new Date(year, month, day);
-              const orbs = getOrbsForDate(day);
+              const orb = getOrbForDate(day);
               const isToday =
                 isCurrentMonth &&
                 day === today.getDate();
               const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-              const hasOrbs = orbs.length > 0;
+              const hasOrb = orb !== null;
 
               return (
                 <motion.div
@@ -179,7 +180,7 @@ export const Calendar: React.FC = () => {
                   className={`h-20 p-2 rounded-lg border-2 transition-all cursor-pointer relative overflow-hidden ${
                     isToday
                       ? 'border-purple-500 bg-purple-50 shadow-md scale-105'
-                      : hasOrbs
+                      : hasOrb
                       ? 'border-amber-300 bg-amber-50 hover:border-amber-400 hover:shadow-md'
                       : isWeekend
                       ? 'border-gray-200 bg-gray-50'
@@ -210,33 +211,53 @@ export const Calendar: React.FC = () => {
                     {!isToday && day}
                   </div>
 
-                  {/* Memory Orbs */}
-                  <div className="flex flex-wrap gap-1 justify-center items-center">
-                    {orbs.slice(0, 3).map((orb) => (
+                  {/* Memory Orb - 하루에 1개만 표시 */}
+                  {orb && (
+                    <div className="flex justify-center items-center h-full pt-1">
                       <motion.div
-                        key={orb.id}
+                        className={`relative ${orb.isReinterpreted ? 'ring-2 ring-yellow-300 ring-opacity-75 rounded-full' : ''}`}
                         whileHover={{ scale: 1.2, zIndex: 10 }}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOrbClick(orb);
+                        }}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ 
+                          delay: orb.isReinterpreted ? 0 : 0.1,
+                          type: 'spring',
+                          stiffness: 200
                         }}
                       >
                         <MemoryOrb
                           orb={orb}
                           size="sm"
                           showGlitter={orb.isReinterpreted}
+                          onClick={() => {
+                            handleOrbClick(orb);
+                          }}
                         />
+                        {/* 재해석된 구슬 표시 - 별 아이콘 */}
+                        {orb.isReinterpreted && (
+                          <motion.div
+                            className="absolute -top-1 -right-1 w-3 h-3 flex items-center justify-center bg-yellow-400 rounded-full shadow-md"
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ 
+                              delay: 0.2,
+                              type: 'spring',
+                              stiffness: 200
+                            }}
+                          >
+                            <span className="text-[8px]">✨</span>
+                          </motion.div>
+                        )}
                       </motion.div>
-                    ))}
-                    {orbs.length > 3 && (
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white text-[8px] font-bold shadow-sm">
-                        +{orbs.length - 3}
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Bookshelf decoration - 책장 느낌 */}
-                  {hasOrbs && (
+                  {hasOrb && (
                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-orange-400 opacity-30"></div>
                   )}
                 </motion.div>
