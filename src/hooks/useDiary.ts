@@ -181,11 +181,11 @@ export const useDiary = () => {
   }, []);
 
   const addPhoto = useCallback((photoUrl: string) => {
-    setCurrentPhotos(prev => [...prev, photoUrl]);
+    setCurrentPhotos((prev: string[]) => [...prev, photoUrl]);
   }, []);
 
   const removePhoto = useCallback((photoUrl: string) => {
-    setCurrentPhotos(prev => prev.filter(p => p !== photoUrl));
+    setCurrentPhotos((prev: string[]) => prev.filter((p: string) => p !== photoUrl));
   }, []);
 
   const resetDiary = useCallback(() => {
