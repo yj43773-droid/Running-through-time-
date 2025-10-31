@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { MemoryOrb } from '@/components/MemoryOrb';
 import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { useAuth } from '@/contexts/AuthContext';
-import { CalendarEntry, MemoryOrb as MemoryOrbType, EMOTION_COLORS, EmotionType } from '@/types';
+import { MemoryOrb as MemoryOrbType, EMOTION_COLORS, EmotionType } from '@/types';
 
 export const Calendar: React.FC = () => {
   const navigate = useNavigate();

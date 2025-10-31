@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { MemoryOrb } from '@/types';
-import { EMOTION_COLORS, EmotionType } from '@/types';
 import { MemoryOrb as MemoryOrbComponent } from '@/components/MemoryOrb';
 
 interface CapsuleMachineProps {

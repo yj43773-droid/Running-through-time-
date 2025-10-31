@@ -6,7 +6,6 @@ import { Character } from '@/components/Character';
 import { ReplyInput } from '@/components/ReplyInput';
 import { useDiary } from '@/hooks/useDiary';
 import { useCharacters } from '@/hooks/useCharacters';
-import { useMemoryOrbs } from '@/hooks/useMemoryOrbs';
 import { ReinterpretationPrompt } from '@/types';
 
 export const Reinterpret: React.FC = () => {
@@ -14,7 +13,6 @@ export const Reinterpret: React.FC = () => {
   const navigate = useNavigate();
   const { diary, loadDiary, isLoading } = useDiary();
   const { characters, getReinterpretationPrompt } = useCharacters();
-  const { markAsReinterpreted } = useMemoryOrbs();
   const [prompt, setPrompt] = useState<ReinterpretationPrompt | null>(null);
   const [showOrb, setShowOrb] = useState(false);
   const [showPaper, setShowPaper] = useState(true);
@@ -46,7 +44,7 @@ export const Reinterpret: React.FC = () => {
     }
   }, [diary, characters, getReinterpretationPrompt]);
 
-  const handleReplySubmit = async (reply: string) => {
+  const handleReplySubmit = async (_reply: string) => {
     // Animate diary to orb
     setShowPaper(false);
     
@@ -56,8 +54,7 @@ export const Reinterpret: React.FC = () => {
 
     // Mark orb as reinterpreted
     if (diary) {
-      // Find orb by diaryId and mark as reinterpreted
-      // await markAsReinterpreted(orbId);
+      // TODO: Find related orb by diaryId and mark as reinterpreted via memory orbs service
     }
 
     // After animation, navigate to home
@@ -162,4 +159,3 @@ export const Reinterpret: React.FC = () => {
     </div>
   );
 };
-

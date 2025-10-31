@@ -83,7 +83,7 @@ export const useCharacters = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [characters, getCharacterById]);
+  }, [getCharacterById]);
 
   const submitReinterpretationReply = useCallback(async (
     diaryId: string,
@@ -132,4 +132,3 @@ export const useCharacters = () => {
     submitReinterpretationReply,
   };
 };
-
