@@ -72,7 +72,7 @@ export const Reinterpret: React.FC = () => {
   }
 
   return (
-    <div className="mobile-container min-h-screen bg-gradient-to-b from-purple-50 to-pink-50 p-6">
+    <div className="mobile-container min-h-screen bg-gradient-to-b from-purple-100 to-pink-100 p-6">
       {/* Diary Paper */}
       <AnimatePresence>
         {showPaper && (
