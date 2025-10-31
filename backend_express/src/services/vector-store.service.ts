@@ -1,4 +1,4 @@
-import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
+import { OpenAIEmbeddings } from '@langchain/openai';
 import { Diary } from '../types';
 import path from 'path';
 import fs from 'fs';
@@ -9,23 +9,23 @@ let embeddings: any = null;
 let db: Database.Database | null = null;
 
 // SQLite 기반 로컬 임베디드 벡터 DB
-// 각 일기의 메타데이터를 SQLite에 저장
+// OpenAI text-embedding-3-small을 사용하여 의미론적 벡터 생성
 
 /**
- * Initialize the vector store with SQLite (truly local/embedded)
+ * Initialize the vector store with SQLite (truly local/embedded) and OpenAI embeddings
  */
 export async function initializeVectorStore(): Promise<void> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || apiKey.length < 20) {
-    console.warn('⚠️  GOOGLE_API_KEY not configured. Vector store will use local mode.');
+    console.warn('⚠️  OPENAI_API_KEY not configured. Vector store will use local mode.');
     return;
   }
 
   try {
-    // Initialize embeddings model
-    embeddings = new GoogleGenerativeAIEmbeddings({
+    // Initialize OpenAI embeddings (text-embedding-3-small)
+    embeddings = new OpenAIEmbeddings({
       apiKey,
-      model: 'embedding-001',
+      model: 'text-embedding-3-small',
     });
 
     // Initialize SQLite database for vector store
