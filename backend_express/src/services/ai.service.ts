@@ -133,6 +133,8 @@ export async function searchContextDiaries(
   limit: number = 1
 ): Promise<any[]> {
   console.log(`🔍 Searching for similar past diaries for context...`);
+  console.log(`📖 Current diary ID: ${diary.id}`);
+  console.log(`📖 Diary object keys:`, Object.keys(diary));
   return await vectorStore.searchSimilarDiaries(
     diary.text,
     userId,

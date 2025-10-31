@@ -81,84 +81,9 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
   }
 });
 
-// Get diary
-router.get('/:diaryId', authenticate, async (req: Request, res: Response) => {
-  try {
-    const diary = await diaryService.getDiary(req.params.diaryId);
-
-    if (!diary || diary.userId !== req.user!.id) {
-      return res.status(404).json({ error: 'Diary not found' });
-    }
-
-    const serialized = await diaryService.serializeDiary(diary);
-    return res.json(serialized);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Update diary
-router.put('/:diaryId', authenticate, async (req: Request, res: Response) => {
-  return updateDiary(req, res);
-});
-
-router.patch('/:diaryId', authenticate, async (req: Request, res: Response) => {
-  return updateDiary(req, res);
-});
-
-async function updateDiary(req: Request, res: Response) {
-  try {
-    const diary = await diaryService.getDiary(req.params.diaryId);
-
-    if (!diary || diary.userId !== req.user!.id) {
-      return res.status(404).json({ error: 'Diary not found' });
-    }
-
-    const updates: any = {};
-    const allowedFields = [
-      'text', 'content', 'emotion', 'aiCharacter', 'aiResponse', 'isEvolved',
-      'reinterpretation', 'evolvedEmotion', 'linkedPastDiaryId',
-    ];
-
-    for (const [key, value] of Object.entries(req.body)) {
-      if (key === 'content' && allowedFields.includes('text')) {
-        updates.text = value;
-      } else if (allowedFields.includes(key)) {
-        updates[key] = value;
-      }
-    }
-
-    if (Object.keys(updates).length === 0) {
-      const serialized = await diaryService.serializeDiary(diary);
-      return res.json(serialized);
-    }
-
-    const updated = await diaryService.updateDiary(req.params.diaryId, updates);
-    const serialized = await diaryService.serializeDiary(updated);
-    return res.json(serialized);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-// Delete diary
-router.delete('/:diaryId', authenticate, async (req: Request, res: Response) => {
-  try {
-    const diary = await diaryService.getDiary(req.params.diaryId);
-
-    if (!diary || diary.userId !== req.user!.id) {
-      return res.status(404).json({ error: 'Diary not found' });
-    }
-
-    await diaryService.deleteDiary(req.params.diaryId);
-    return res.status(204).send();
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// ============================================
+// IMPORTANT: More specific routes MUST come before generic /:diaryId routes
+// ============================================
 
 // Refresh AI
 router.post('/:diaryId/refresh-ai', authenticate, async (req: Request, res: Response) => {
@@ -193,6 +118,9 @@ router.get('/:diaryId/reinterpret/context', authenticate, async (req: Request, r
     if (!diary || diary.userId !== req.user!.id) {
       return res.status(404).json({ error: 'Diary not found' });
     }
+
+    console.log(`📖 Reinterpret context request for diary: ${diary.id}`);
+    console.log(`📖 Diary content: "${diary.text.substring(0, 50)}..."`);
 
     // Search for semantically similar diaries (exclude current diary)
     const similarDiaries = await aiService.searchContextDiaries(diary, diary.userId, 1);
@@ -274,6 +202,89 @@ router.post('/:diaryId/reinterpret/reply', authenticate, async (req: Request, re
       diary: serialized,
       linkedPastDiaryId,
     });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================
+// Generic diary routes (must come AFTER specific routes)
+// ============================================
+
+// Get diary
+router.get('/:diaryId', authenticate, async (req: Request, res: Response) => {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    const serialized = await diaryService.serializeDiary(diary);
+    return res.json(serialized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Update diary
+router.put('/:diaryId', authenticate, async (req: Request, res: Response) => {
+  return updateDiary(req, res);
+});
+
+router.patch('/:diaryId', authenticate, async (req: Request, res: Response) => {
+  return updateDiary(req, res);
+});
+
+async function updateDiary(req: Request, res: Response) {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    const updates: any = {};
+    const allowedFields = [
+      'text', 'content', 'emotion', 'aiCharacter', 'aiResponse', 'isEvolved',
+      'reinterpretation', 'evolvedEmotion', 'linkedPastDiaryId',
+    ];
+
+    for (const [key, value] of Object.entries(req.body)) {
+      if (key === 'content' && allowedFields.includes('text')) {
+        updates.text = value;
+      } else if (allowedFields.includes(key)) {
+        updates[key] = value;
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      const serialized = await diaryService.serializeDiary(diary);
+      return res.json(serialized);
+    }
+
+    const updated = await diaryService.updateDiary(req.params.diaryId, updates);
+    const serialized = await diaryService.serializeDiary(updated);
+    return res.json(serialized);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// Delete diary
+router.delete('/:diaryId', authenticate, async (req: Request, res: Response) => {
+  try {
+    const diary = await diaryService.getDiary(req.params.diaryId);
+
+    if (!diary || diary.userId !== req.user!.id) {
+      return res.status(404).json({ error: 'Diary not found' });
+    }
+
+    await diaryService.deleteDiary(req.params.diaryId);
+    return res.status(204).send();
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Internal server error' });
