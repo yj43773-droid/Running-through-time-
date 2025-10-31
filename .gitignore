@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.env
+.env.local
+database.db
+.DS_Store
+*.swp
