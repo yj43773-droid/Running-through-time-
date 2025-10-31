@@ -64,6 +64,7 @@ export const useCharacters = () => {
       // Fetch context diary and character info
       const contextResponse = await fetch(`/api/diaries/${diaryId}/reinterpret/context`, {
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store', // Disable caching for fresh data
       });
 
       if (!contextResponse.ok) {
