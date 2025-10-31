@@ -5,6 +5,7 @@ import { initializeDatabase } from './db';
 import { errorHandler } from './middleware';
 import authRoutes from './routes/auth';
 import diariesRoutes from './routes/diaries';
+import orbsRoutes from './routes/orbs';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/diaries', diariesRoutes);
+app.use('/api/orbs', orbsRoutes);
 
 // Error handling
 app.use(errorHandler);
