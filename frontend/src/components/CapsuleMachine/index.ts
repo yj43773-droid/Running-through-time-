@@ -1,0 +1,2 @@
+export { CapsuleMachine } from './CapsuleMachine';
+
