@@ -35,14 +35,35 @@ app.use(errorHandler);
 // Initialize and start
 async function start() {
   try {
+    // Log environment configuration
+    console.log('\n========================================');
+    console.log('🚀 Starting Heart Orb Diary Server');
+    console.log('========================================');
+    console.log(`📝 Node Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔧 Port: ${PORT}`);
+
+    // Check API key configuration
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (apiKey && apiKey.length > 20) {
+      console.log('✅ GOOGLE_API_KEY configured (Gemini AI enabled)');
+    } else if (apiKey) {
+      console.log('⚠️  GOOGLE_API_KEY appears invalid (too short)');
+      console.log('   → AI features will use template responses');
+    } else {
+      console.log('⚠️  GOOGLE_API_KEY not configured');
+      console.log('   → AI features will use template responses');
+    }
+
+    // Initialize database
     await initializeDatabase();
-    console.log('Database initialized');
+    console.log('✅ Database initialized');
 
     app.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`\n✨ Server running on http://localhost:${PORT}`);
+      console.log('========================================\n');
     });
   } catch (err) {
-    console.error('Failed to start server:', err);
+    console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
 }

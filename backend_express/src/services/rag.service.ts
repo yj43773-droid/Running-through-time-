@@ -43,11 +43,23 @@ function initializeGenAI(): GoogleGenerativeAI {
 
   const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY environment variable is required');
+    console.warn('⚠️  GOOGLE_API_KEY not configured. Using template responses.');
+    throw new Error('GOOGLE_API_KEY not available - using fallback templates');
   }
 
-  genAI = new GoogleGenerativeAI(apiKey);
-  return genAI;
+  if (apiKey.length < 20) {
+    console.warn('⚠️  GOOGLE_API_KEY appears invalid (too short). Using template responses.');
+    throw new Error('GOOGLE_API_KEY appears invalid - using fallback templates');
+  }
+
+  try {
+    genAI = new GoogleGenerativeAI(apiKey);
+    console.log('✅ Google Generative AI initialized successfully');
+    return genAI;
+  } catch (error) {
+    console.error('❌ Failed to initialize Google Generative AI:', error);
+    throw new Error('Failed to initialize Gemini API - using fallback templates');
+  }
 }
 
 /**
@@ -58,7 +70,14 @@ export async function generateRAGResponses(
   userId: string
 ): Promise<PersonaResponse[]> {
   try {
-    const genAIInstance = initializeGenAI();
+    let genAIInstance: GoogleGenerativeAI;
+
+    try {
+      genAIInstance = initializeGenAI();
+    } catch (initError) {
+      console.warn('⚠️  Gemini API not available, using template responses');
+      return generateTemplateResponses(diary);
+    }
 
     // Search for similar diaries
     const similarDiaries = await searchSimilarDiaries(diary.text, userId, 2);
@@ -100,7 +119,8 @@ ${persona.instruction}
           message: message.trim(),
         });
       } catch (error) {
-        console.error(`Error generating response for ${persona.key}:`, error);
+        console.error(`❌ Error generating response for ${persona.key}:`, error);
+        console.warn(`⚠️  Falling back to template for ${persona.key}`);
         // Fallback to template response
         responses.push({
           persona: persona.key,
@@ -113,8 +133,9 @@ ${persona.instruction}
 
     return responses;
   } catch (error) {
-    console.error('Error in RAG response generation:', error);
+    console.error('❌ Error in RAG response generation:', error);
     // Return template responses as fallback
+    console.warn('⚠️  Using template responses as final fallback');
     return generateTemplateResponses(diary);
   }
 }
@@ -161,7 +182,15 @@ function getTemplateResponse(
  */
 export async function analyzeEmotions(diaryContent: string): Promise<string> {
   try {
-    const genAIInstance = initializeGenAI();
+    let genAIInstance: GoogleGenerativeAI;
+
+    try {
+      genAIInstance = initializeGenAI();
+    } catch (initError) {
+      console.warn('⚠️  Gemini API not available for emotion analysis, returning neutral');
+      return '감정: neutral\n이유: API 미사용으로 기본값 반환';
+    }
+
     const model = genAIInstance.getGenerativeModel({ model: 'gemini-pro' });
 
     const prompt = `
@@ -178,8 +207,9 @@ ${diaryContent}
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (error) {
-    console.error('Error analyzing emotions:', error);
-    return '감정: neutral';
+    console.error('❌ Error analyzing emotions:', error);
+    console.warn('⚠️  Using fallback emotion: neutral');
+    return '감정: neutral\n이유: 감정 분석 실패로 기본값 반환';
   }
 }
 
