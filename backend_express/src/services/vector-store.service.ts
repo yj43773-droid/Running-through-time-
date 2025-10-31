@@ -1,23 +1,19 @@
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { Diary } from '../types';
-import path from 'path';
-import fs from 'fs';
-import Database from 'better-sqlite3';
+import { db } from '../db';
 
-let vectorStore: any = null;
 let embeddings: any = null;
-let db: Database.Database | null = null;
 
-// SQLite 기반 로컬 임베디드 벡터 DB
-// OpenAI text-embedding-3-small을 사용하여 의미론적 벡터 생성
+// OpenAI 기반 통합 벡터 임베딩 (database.db에 직접 저장)
+// SQLite의 embedding BLOB 컬럼에 1536차원 벡터 저장
 
 /**
- * Initialize the vector store with SQLite (truly local/embedded) and OpenAI embeddings
+ * Initialize embeddings API (no separate DB needed)
  */
 export async function initializeVectorStore(): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || apiKey.length < 20) {
-    console.warn('⚠️  OPENAI_API_KEY not configured. Vector store will use local mode.');
+    console.warn('⚠️  OPENAI_API_KEY not configured. Vector embeddings will be disabled.');
     return;
   }
 
@@ -28,90 +24,69 @@ export async function initializeVectorStore(): Promise<void> {
       model: 'text-embedding-3-small',
     });
 
-    // Initialize SQLite database for vector store
-    const dataDir = path.join(process.cwd(), 'vector_data');
-
-    // Create data directory if it doesn't exist
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    const dbPath = path.join(dataDir, 'vectors.db');
-    db = new Database(dbPath);
-
-    // Enable foreign keys
-    db.pragma('foreign_keys = ON');
-
-    // Create vector store table if it doesn't exist
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS diary_vectors (
-        id TEXT PRIMARY KEY,
-        userId TEXT NOT NULL,
-        text TEXT NOT NULL,
-        emotion TEXT,
-        createdAt DATETIME NOT NULL,
-        embedding BLOB,
-        savedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS idx_userId ON diary_vectors(userId);
-      CREATE INDEX IF NOT EXISTS idx_createdAt ON diary_vectors(createdAt);
-    `);
-
-    vectorStore = {
-      embeddings,
-      db,
-      dbPath,
-      dataDir,
-    };
-
-    console.log('✅ SQLite Vector Store initialized successfully');
-    console.log(`   📁 Database: ${dbPath}`);
+    console.log('✅ Vector Store initialized (using database.db)');
   } catch (error) {
     console.warn('⚠️  Vector store initialization warning:', error);
-    vectorStore = {
-      embeddings: null,
-      db: null,
-    };
+    embeddings = null;
   }
 }
 
 /**
- * Add a diary entry to SQLite vector store with embedding
+ * Generate and store embedding for a diary
  */
-export async function addDiaryToVectorStore(diary: Diary): Promise<void> {
-  if (!vectorStore || !vectorStore.db || !vectorStore.embeddings) {
-    console.warn('⚠️  Vector store not initialized. Skipping add operation.');
+export async function generateAndStoreEmbedding(diaryId: string, text: string): Promise<Buffer | null> {
+  if (!embeddings) {
+    console.warn('⚠️  Embeddings not initialized. Skipping embedding generation.');
+    return null;
+  }
+
+  try {
+    console.log(`📝 Generating embedding for diary ${diaryId}...`);
+    const embedding = await embeddings.embedQuery(text);
+
+    // Convert embedding array to binary format
+    const embeddingBuffer = Buffer.from(JSON.stringify(embedding));
+
+    console.log(`✅ Embedding generated (${embedding.length} dimensions)`);
+    return embeddingBuffer;
+  } catch (error) {
+    console.error('❌ Error generating embedding:', error);
+    return null;
+  }
+}
+
+/**
+ * Add embedding to an existing diary
+ */
+export async function addDiaryEmbedding(diaryId: string, text: string): Promise<void> {
+  if (!embeddings) {
+    console.warn('⚠️  Embeddings not initialized. Skipping...');
     return;
   }
 
   try {
-    const db = vectorStore.db as Database.Database;
+    const embeddingBuffer = await generateAndStoreEmbedding(diaryId, text);
 
-    // Generate embedding for the diary content
-    console.log(`📝 Generating embedding for diary ${diary.id}...`);
-    const embedding = await vectorStore.embeddings.embedQuery(diary.text);
+    if (!embeddingBuffer) return;
 
-    // Convert embedding array to binary format for storage
-    const embeddingBuffer = Buffer.from(JSON.stringify(embedding));
-
-    // Insert or replace diary in vector store with embedding
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO diary_vectors (id, userId, text, emotion, createdAt, embedding)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
-      diary.id,
-      diary.userId,
-      diary.text,
-      diary.emotion || 'unknown',
-      diary.createdAt,
-      embeddingBuffer
-    );
-
-    console.log(`✅ Diary ${diary.id} added to Vector Store with embedding (${embedding.length} dimensions)`);
+    // Update diary with embedding
+    return new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE diaries SET embedding = ? WHERE id = ?',
+        [embeddingBuffer, diaryId],
+        (err) => {
+          if (err) {
+            console.error('❌ Error storing embedding:', err);
+            reject(err);
+          } else {
+            console.log(`✅ Diary ${diaryId} updated with embedding`);
+            resolve();
+          }
+        }
+      );
+    });
   } catch (error) {
-    console.error('❌ Error adding diary to vector store:', error);
+    console.error('❌ Error adding diary embedding:', error);
   }
 }
 
@@ -152,95 +127,108 @@ export async function searchSimilarDiaries(
   limit: number = 3,
   excludeDiaryId?: string
 ): Promise<any[]> {
-  if (!vectorStore || !vectorStore.db || !vectorStore.embeddings) {
-    console.warn('⚠️  Vector store not initialized. Returning empty results.');
+  if (!embeddings) {
+    console.warn('⚠️  Embeddings not initialized. Returning empty results.');
     return [];
   }
 
-  try {
-    const db = vectorStore.db as Database.Database;
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Generate embedding for the query
+      console.log(`🔍 Generating query embedding...`);
+      const queryEmbedding = await embeddings.embedQuery(diaryContent);
 
-    // Generate embedding for the query
-    console.log(`🔍 Generating query embedding...`);
-    const queryEmbedding = await vectorStore.embeddings.embedQuery(diaryContent);
+      // Get all diaries for this user with embeddings from database.db
+      db.all(
+        `SELECT id, text, emotion, createdAt, embedding
+         FROM diaries
+         WHERE userId = ? AND embedding IS NOT NULL
+         ORDER BY createdAt DESC`,
+        [userId],
+        (err, rows: any[]) => {
+          if (err) {
+            console.error('❌ Error fetching diaries:', err);
+            reject(err);
+            return;
+          }
 
-    // Get all diaries for this user from SQLite
-    const stmt = db.prepare(`
-      SELECT id, text, emotion, createdAt, embedding
-      FROM diary_vectors
-      WHERE userId = ? AND embedding IS NOT NULL
-      ORDER BY createdAt DESC
-    `);
+          // Calculate semantic similarity for each diary
+          const results = (rows || [])
+            .map((diary) => {
+              if (!diary.embedding) return null;
 
-    const diaries = stmt.all(userId) as Array<{ id: string; text: string; emotion: string; createdAt: string; embedding: Buffer | null }>;
+              try {
+                // Parse stored embedding
+                const storedEmbedding = JSON.parse(diary.embedding.toString('utf-8')) as number[];
 
-    // Calculate semantic similarity for each diary
-    const results = diaries
-      .map((diary) => {
-        if (!diary.embedding) return null;
+                // Calculate cosine similarity
+                const similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
 
-        // Parse stored embedding
-        const storedEmbedding = JSON.parse(diary.embedding.toString('utf-8')) as number[];
+                return {
+                  id: diary.id,
+                  text: diary.text,
+                  content: diary.text.substring(0, 100),
+                  emotion: diary.emotion,
+                  date: diary.createdAt,
+                  similarity,
+                };
+              } catch (e) {
+                console.warn(`⚠️  Failed to parse embedding for diary ${diary.id}`);
+                return null;
+              }
+            })
+            .filter((r) => {
+              // Filter by similarity threshold and exclude specified diary
+              if (r === null || r.similarity <= 0.5) return false;
+              if (excludeDiaryId && r.id === excludeDiaryId) return false;
+              return true;
+            })
+            .sort((a, b) => b!.similarity - a!.similarity)
+            .slice(0, limit);
 
-        // Calculate cosine similarity
-        const similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
-
-        return {
-          id: diary.id,
-          text: diary.text,
-          content: diary.text.substring(0, 100),
-          emotion: diary.emotion,
-          date: diary.createdAt,
-          similarity,
-        };
-      })
-      .filter((r) => {
-        // Filter by similarity threshold and exclude specified diary
-        if (r === null || r.similarity <= 0.5) return false;
-        if (excludeDiaryId && r.id === excludeDiaryId) return false;
-        return true;
-      })
-      .sort((a, b) => b!.similarity - a!.similarity)
-      .slice(0, limit);
-
-    console.log(`✅ Found ${results.length} semantically similar diaries for user ${userId}`);
-    return results;
-  } catch (error) {
-    console.error('❌ Error searching similar diaries:', error);
-    return [];
-  }
+          console.log(`✅ Found ${results.length} semantically similar diaries for user ${userId}`);
+          resolve(results);
+        }
+      );
+    } catch (error) {
+      console.error('❌ Error searching similar diaries:', error);
+      reject(error);
+    }
+  });
 }
 
 /**
- * Remove a diary from SQLite vector store
+ * Remove embedding from a diary
  */
-export async function removeDiaryFromVectorStore(diaryId: string): Promise<void> {
-  if (!vectorStore || !vectorStore.db) {
-    console.warn('⚠️  Vector store not initialized. Skipping remove operation.');
-    return;
-  }
+export async function removeDiaryEmbedding(diaryId: string): Promise<void> {
+  if (!embeddings) return;
 
-  try {
-    const db = vectorStore.db as Database.Database;
-
-    const stmt = db.prepare('DELETE FROM diary_vectors WHERE id = ?');
-    stmt.run(diaryId);
-
-    console.log(`✅ Diary ${diaryId} removed from SQLite Vector Store`);
-  } catch (error) {
-    console.error('❌ Error removing diary from vector store:', error);
-  }
+  return new Promise((resolve, reject) => {
+    db.run(
+      'UPDATE diaries SET embedding = NULL WHERE id = ?',
+      [diaryId],
+      (err) => {
+        if (err) {
+          console.error('❌ Error removing embedding:', err);
+          reject(err);
+        } else {
+          console.log(`✅ Embedding removed for diary ${diaryId}`);
+          resolve();
+        }
+      }
+    );
+  });
 }
 
 /**
- * Update a diary in the vector store
+ * Update embedding for a diary (delete old, generate new)
  */
-export async function updateDiaryInVectorStore(diary: Diary): Promise<void> {
+export async function updateDiaryEmbedding(diaryId: string, text: string): Promise<void> {
   try {
-    await removeDiaryFromVectorStore(diary.id);
-    await addDiaryToVectorStore(diary);
+    await removeDiaryEmbedding(diaryId);
+    await addDiaryEmbedding(diaryId, text);
   } catch (error) {
-    console.error('❌ Error updating diary in vector store:', error);
+    console.error('❌ Error updating diary embedding:', error);
   }
 }
 
@@ -248,34 +236,37 @@ export async function updateDiaryInVectorStore(diary: Diary): Promise<void> {
  * Get vector store stats
  */
 export async function getVectorStoreStats() {
-  if (!vectorStore || !vectorStore.db) {
-    return {
-      totalDiaries: 0,
-      status: '⚠️  Vector store not initialized',
-      mode: 'disabled',
-      dbPath: 'N/A',
-    };
-  }
+  return new Promise((resolve) => {
+    if (!embeddings) {
+      resolve({
+        totalDiaries: 0,
+        totalWithEmbeddings: 0,
+        status: '⚠️  Embeddings not initialized',
+        mode: 'disabled',
+      });
+      return;
+    }
 
-  try {
-    const db = vectorStore.db as Database.Database;
-
-    // Get total count
-    const countResult = db.prepare('SELECT COUNT(*) as count FROM diary_vectors').get() as { count: number };
-    const totalDiaries = countResult.count;
-
-    return {
-      totalDiaries,
-      status: '✅ Vector store active (SQLite Embedded)',
-      mode: 'sqlite-embedded',
-      dbPath: vectorStore.dbPath || 'N/A',
-      dataDir: vectorStore.dataDir || 'N/A',
-    };
-  } catch (error) {
-    return {
-      totalDiaries: 0,
-      status: '❌ Error retrieving stats',
-      mode: 'error',
-    };
-  }
+    db.get(
+      `SELECT COUNT(*) as total, SUM(CASE WHEN embedding IS NOT NULL THEN 1 ELSE 0 END) as withEmbeddings
+       FROM diaries`,
+      (err, row: any) => {
+        if (err) {
+          resolve({
+            totalDiaries: 0,
+            totalWithEmbeddings: 0,
+            status: '❌ Error retrieving stats',
+            mode: 'error',
+          });
+        } else {
+          resolve({
+            totalDiaries: row?.total || 0,
+            totalWithEmbeddings: row?.withEmbeddings || 0,
+            status: '✅ Vector Store active (integrated with database.db)',
+            mode: 'integrated',
+          });
+        }
+      }
+    );
+  });
 }

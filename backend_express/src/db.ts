@@ -1,6 +1,4 @@
 import sqlite3 from 'sqlite3';
-import path from 'path';
-import { initializeVectorStore } from './services/vector-store.service';
 
 const dbPath = process.env.DATABASE_URL || './database.db';
 
@@ -32,7 +30,7 @@ export async function initializeDatabase() {
           if (err && !err.message.includes('already exists')) console.error('❌ Error creating users table:', err);
         });
 
-        // Create diaries table
+        // Create diaries table with embedding support
         db.run(`
           CREATE TABLE IF NOT EXISTS diaries (
             id TEXT PRIMARY KEY,
@@ -50,6 +48,7 @@ export async function initializeDatabase() {
             emotionColor TEXT,
             evolvedEmotionColor TEXT,
             linkedPastDiaryId TEXT,
+            embedding BLOB,
             FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (linkedPastDiaryId) REFERENCES diaries(id) ON DELETE SET NULL
           )
@@ -86,13 +85,8 @@ export async function initializeDatabase() {
             console.error('❌ Error creating memory_orbs table:', err);
             reject(err);
           } else {
-            // Initialize vector store after database is ready
-            initializeVectorStore().then(() => {
-              resolve();
-            }).catch((vectorError) => {
-              console.warn('⚠️  Vector store initialization failed, continuing anyway:', vectorError);
-              resolve();
-            });
+            console.log('✅ All database tables initialized');
+            resolve();
           }
         });
       });

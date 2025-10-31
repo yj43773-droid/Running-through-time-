@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeDatabase } from './db';
+import { initializeVectorStore } from './services/vector-store.service';
 import { errorHandler } from './middleware';
 import authRoutes from './routes/auth';
 import diariesRoutes from './routes/diaries';
@@ -57,6 +58,9 @@ async function start() {
     // Initialize database
     await initializeDatabase();
     console.log('✅ Database initialized');
+
+    // Initialize vector store (embeddings API)
+    await initializeVectorStore();
 
     app.listen(PORT, () => {
       console.log(`\n✨ Server running on http://localhost:${PORT}`);

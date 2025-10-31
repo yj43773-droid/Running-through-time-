@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate } from '../middleware';
 import * as diaryService from '../services/diary.service';
 import * as aiService from '../services/ai.service';
+import * as vectorStore from '../services/vector-store.service';
 
 const router = Router();
 
@@ -56,6 +57,9 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       aiCharacter || 'HeartOrb Companion',
       ''
     );
+
+    // Generate embedding for vector search
+    await vectorStore.addDiaryEmbedding(diary.id, diaryText);
 
     // Generate AI responses with RAG
     const responses = await aiService.generateResponses(diary, userId);
