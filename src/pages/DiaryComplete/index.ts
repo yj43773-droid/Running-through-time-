@@ -1,0 +1,2 @@
+export { DiaryComplete } from './DiaryComplete';
+
